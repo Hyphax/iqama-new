@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"/Users/m1/Desktop/mobile/src/app/\\(tabs\\)\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(chmod +x /Users/m1/Desktop/mobile/node_modules/.bin/expo)",
+      "Bash(npm install:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(xcode-select -p)",
+      "Bash(xcodebuild -version)",
+      "Read(//Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/**)",
+      "Read(//Library/Developer/CoreSimulator/Profiles/**)",
+      "Bash(xcodebuild -showsdks)"
+    ]
+  }
+}
