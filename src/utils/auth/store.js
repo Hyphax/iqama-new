@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 
-export const authKey = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`;
+const projectGroupId = process.env.EXPO_PUBLIC_PROJECT_GROUP_ID || 'default';
+export const authKey = `${projectGroupId}-jwt`;
 
 /**
  * This store manages the authentication state of the application.
@@ -10,10 +11,14 @@ export const useAuthStore = create((set) => ({
   isReady: false,
   auth: null,
   setAuth: (auth) => {
-    if (auth) {
-      SecureStore.setItemAsync(authKey, JSON.stringify(auth));
-    } else {
-      SecureStore.deleteItemAsync(authKey);
+    try {
+      if (auth) {
+        SecureStore.setItemAsync(authKey, JSON.stringify(auth));
+      } else {
+        SecureStore.deleteItemAsync(authKey);
+      }
+    } catch (error) {
+      console.error('SecureStore operation failed:', error);
     }
     set({ auth });
   },

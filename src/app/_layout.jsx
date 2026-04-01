@@ -1,10 +1,11 @@
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/utils/auth/useAuth';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated as RNAnimated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { enableFreeze, enableScreens } from 'react-native-screens';
+
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DEFAULT_SETTINGS, SettingsProvider, useSettings, SETTINGS_KEY } from '@/utils/useSettings';
@@ -25,8 +26,6 @@ import {
   Montserrat_700Bold,
 } from "@expo-google-fonts/montserrat";
 
-enableScreens(false);
-enableFreeze(false);
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
@@ -149,25 +148,27 @@ export default function RootLayout() {
   const rootBg = initialSettings.whiteTheme ? '#F9F6F0' : '#080814';
 
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <SettingsProvider initialSettings={initialSettings}>
-          <LaunchOverlayContext.Provider value={hideLaunchOverlay}>
-            <SupabaseUserProvider>
-              <GestureHandlerRootView style={{ flex: 1, backgroundColor: rootBg }}>
-                <RootNavigator />
-                {launchVisible ? (
-                  <LaunchOverlay
-                    isWhite={initialSettings.whiteTheme === true}
-                    opacity={launchOpacity}
-                  />
-                ) : null}
-              </GestureHandlerRootView>
-            </SupabaseUserProvider>
-          </LaunchOverlayContext.Provider>
-        </SettingsProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <SettingsProvider initialSettings={initialSettings}>
+            <LaunchOverlayContext.Provider value={hideLaunchOverlay}>
+              <SupabaseUserProvider>
+                <GestureHandlerRootView style={{ flex: 1, backgroundColor: rootBg }}>
+                  <RootNavigator />
+                  {launchVisible ? (
+                    <LaunchOverlay
+                      isWhite={initialSettings.whiteTheme === true}
+                      opacity={launchOpacity}
+                    />
+                  ) : null}
+                </GestureHandlerRootView>
+              </SupabaseUserProvider>
+            </LaunchOverlayContext.Provider>
+          </SettingsProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -1,4 +1,6 @@
-﻿import { useState, useRef, useCallback, useEffect } from "react";
+﻿// WARNING: EXPO_PUBLIC_ keys are embedded in the client bundle.
+// For production, route API calls through your backend to protect this key.
+import { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, TextInput, Modal, ScrollView, Pressable, StyleSheet, Dimensions, Keyboard, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

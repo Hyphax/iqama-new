@@ -342,7 +342,9 @@ export default function IdentityScreen() {
   const sparkleRot = useSharedValue(0);
   const ageRef = useRef(null);
 
-  const isValid = name.trim().length > 0 && age.trim().length > 0 && gender;
+  const parsedAge = parseInt(age, 10);
+  const isAgeValid = !isNaN(parsedAge) && Number.isInteger(parsedAge) && parsedAge >= 5 && parsedAge <= 120;
+  const isValid = name.trim().length > 0 && isAgeValid && gender;
 
   useEffect(() => {
     headerLineW.value = withDelay(
@@ -691,7 +693,9 @@ export default function IdentityScreen() {
                 marginTop: 12,
               }}
             >
-              Please fill in all fields
+              {age.trim().length > 0 && !isAgeValid
+                ? "Please enter a valid age (5\u2013120)"
+                : "Please fill in all fields"}
             </Text>
           )}
         </Animated.View>

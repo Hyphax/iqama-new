@@ -128,12 +128,10 @@ export function useNotificationScheduler(prayerData, settings) {
     (async () => {
       const granted = await requestPermissions();
       if (!granted) {
-        console.log("Notification permission denied");
         return;
       }
       await setupChannel();
       hasSetup.current = true;
-      console.log("Notifications setup complete");
     })();
   }, []);
 
@@ -166,9 +164,6 @@ export function useNotificationScheduler(prayerData, settings) {
       if (streakReminders) {
         await scheduleStreakReminder();
       }
-
-      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-      console.log(`Scheduled ${scheduled.length} notifications`);
     })();
   }, [
     prayerTimesKey,

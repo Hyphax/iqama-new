@@ -1,32 +1,46 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text } from "react-native";
 import { BlurView } from "expo-blur";
 import Svg, { Circle, Line, Polygon, Text as SvgText } from "react-native-svg";
 import Animated, {
   FadeInDown,
-  useSharedValue,
   useAnimatedStyle,
-  withRepeat,
-  withTiming,
 } from "react-native-reanimated";
 
-export function QiblaCompass({ isWhite = false }) {
-  const compassRotation = useSharedValue(0);
+/**
+ * QiblaCompass displays a compass rotated so the needle points toward the Qibla.
+ * @param {number} qiblaDirection - Bearing from the user's location to Makkah in degrees (0-360).
+ * @param {number} heading - Current device compass heading in degrees (0-360).
+ * @param {boolean} isWhite - Theme toggle.
+ */
+export function QiblaCompass({ qiblaDirection = 0, heading = 0, isWhite = false }) {
   const compassSize = 200;
   const center = compassSize / 2;
   const radius = center - 16;
 
-  useEffect(() => {
-    compassRotation.value = withRepeat(
-      withTiming(360, { duration: 60000 }),
-      -1,
-      false,
-    );
-  }, []);
+  // Rotate the compass so the Qibla needle points in the correct direction
+  // relative to the device heading.
+  const rotation = qiblaDirection - heading;
 
   const compassStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${compassRotation.value}deg` }],
+    transform: [{ rotate: `${rotation}deg` }],
   }));
+
+  // Format the bearing label (e.g. "58 NE")
+  const formatBearing = (deg) => {
+    const normalized = ((deg % 360) + 360) % 360;
+    const rounded = Math.round(normalized);
+    let cardinal = "";
+    if (rounded >= 337.5 || rounded < 22.5) cardinal = "N";
+    else if (rounded < 67.5) cardinal = "NE";
+    else if (rounded < 112.5) cardinal = "E";
+    else if (rounded < 157.5) cardinal = "SE";
+    else if (rounded < 202.5) cardinal = "S";
+    else if (rounded < 247.5) cardinal = "SW";
+    else if (rounded < 292.5) cardinal = "W";
+    else cardinal = "NW";
+    return `${rounded}\u00B0 ${cardinal}`;
+  };
 
   // Theme-aware color tokens
   const majorTickColor = isWhite
@@ -176,13 +190,13 @@ export function QiblaCompass({ isWhite = false }) {
                 W
               </SvgText>
 
-              {/* Needle — north pointer */}
+              {/* Needle -- north pointer */}
               <Polygon
                 points={`${center},${center - 70} ${center - 6},${center} ${center + 6},${center}`}
                 fill={needleTopColor}
                 opacity="0.85"
               />
-              {/* Needle — south tail */}
+              {/* Needle -- south tail */}
               <Polygon
                 points={`${center},${center + 70} ${center - 6},${center} ${center + 6},${center}`}
                 fill={needleBottomColor}
@@ -222,7 +236,7 @@ export function QiblaCompass({ isWhite = false }) {
               marginTop: 16,
             }}
           >
-            58° NE
+            {formatBearing(qiblaDirection)}
           </Text>
           <Text
             style={{

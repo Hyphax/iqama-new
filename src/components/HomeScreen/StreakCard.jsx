@@ -243,6 +243,8 @@ export const StreakCard = memo(function StreakCard({
             : "rgba(255,140,0,0.12)",
           ...(isWhite ? WHITE_THEME.cardShadowStrong : SHADOWS.card),
         }}
+        accessible={true}
+        accessibilityLabel={`Prayer streak: ${currentStreak} ${currentStreak === 1 ? "day" : "days"}. ${currentStreak > 0 ? `${nextMilestone - currentStreak} days to ${nextMilestone}-day milestone` : "Start your streak today"}`}
       >
         {/* ── White theme: ULTRA PREMIUM warm ivory + amber-honey gradient base ── */}
         {isWhite && (

@@ -10,7 +10,6 @@ import {
   CheckCircle,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle as SvgCircle } from "react-native-svg";
 import Animated, {
@@ -20,14 +19,10 @@ import Animated, {
   ZoomIn,
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedProps,
   withRepeat,
   withSequence,
   withTiming,
-  withSpring,
   Easing,
-  interpolate,
-  runOnJS,
 } from "react-native-reanimated";
 import { PRAYER_AURA, SHADOWS, WHITE_THEME } from "@/utils/iqamaTheme";
 import GoldGradientButton from "@/components/GoldGradientButton";
@@ -39,8 +34,6 @@ import { WhiteBackgroundArt } from "@/components/HomeScreen/WhiteBackgroundArt";
 const { width: SCREEN_W } = Dimensions.get("window");
 const FOCUS_DURATION_SECONDS = 5 * 60; // 5 min prayer session
 const PENALTY_SECONDS = 15;
-
-const AnimatedCircle = Animated.createAnimatedComponent(SvgCircle);
 
 // Focus states
 const STATE_IDLE = "idle";

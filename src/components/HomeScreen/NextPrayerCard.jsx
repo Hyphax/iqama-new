@@ -330,6 +330,8 @@ export const NextPrayerCard = memo(function NextPrayerCard({
       {/* Main glassmorphic card */}
       <View
         style={{ borderRadius: 32, overflow: "hidden", ...SHADOWS.elevated }}
+        accessible={true}
+        accessibilityLabel={`Next prayer: ${prayerName} at ${prayerTime}`}
       >
         {/* Animated border glow */}
         <Animated.View
