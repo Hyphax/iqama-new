@@ -1,21 +1,25 @@
 import { useState, useEffect } from "react";
 import NetInfo from "@react-native-community/netinfo";
 
-/**
- * Hook that tracks network connectivity status.
- * Returns { isConnected, isInternetReachable }.
- */
 export function useNetworkStatus() {
   const [status, setStatus] = useState({
-    isConnected: true,
-    isInternetReachable: true,
+    isConnected: null,
+    isInternetReachable: null,
   });
 
   useEffect(() => {
+    // Eagerly seed current state
+    NetInfo.fetch().then((state) => {
+      setStatus({
+        isConnected: state.isConnected,
+        isInternetReachable: state.isInternetReachable,
+      });
+    });
+    // Subscribe to ongoing changes
     const unsubscribe = NetInfo.addEventListener((state) => {
       setStatus({
-        isConnected: state.isConnected ?? true,
-        isInternetReachable: state.isInternetReachable ?? true,
+        isConnected: state.isConnected,
+        isInternetReachable: state.isInternetReachable,
       });
     });
     return () => unsubscribe();

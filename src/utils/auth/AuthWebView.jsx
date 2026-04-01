@@ -88,7 +88,13 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
         if (request.url === `${baseURL}${callbackUrl}`) {
           fetch(request.url)
             .then(async (response) => {
+              if (!response.ok) {
+                throw new Error(`Auth callback failed with ${response.status}`);
+              }
               const data = await response.json();
+              if (!data?.jwt || !data?.user) {
+                throw new Error("Auth callback returned incomplete session");
+              }
               setAuth({ jwt: data.jwt, user: data.user });
             })
             .catch((error) => {

@@ -162,8 +162,6 @@ export const GOLD = {
   shimmer: "rgba(212,175,55,0.3)",
 };
 
-export const GOLD_GRADIENT_RICH = ["#D4AF37", "#B8860B", "#8B6914"];
-export const DEEP_GOLD_GRADIENT = ["#D4AF37", "#B8860B", "#8B6914"];
 export const GOLD_GRADIENT = ["#F5DEB3", "#D4AF37", "#B8860B"];
 export const GLASS_GRADIENT = [
   "rgba(255,255,255,0.08)",

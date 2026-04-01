@@ -29,6 +29,9 @@ function useHandleStreamResponse({
               content += remaining;
               onChunk(content);
             }
+          } catch (error) {
+            await reader.cancel();
+            throw error;
           } finally {
             onFinish(content);
           }

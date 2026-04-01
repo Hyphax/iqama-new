@@ -105,10 +105,10 @@ export function SettingsProvider({ children, initialSettings, initialWhiteTheme 
           await dbUpdate("user_settings", `user_id=eq.${userId}`, mapped);
         }
 
-        // Also sync userName/userEmail to users table
+        // Also sync userName/userEmail to users table (only when truthy)
         const profileUpdates = {};
-        if (updatedSettings.userName !== undefined) profileUpdates.display_name = updatedSettings.userName;
-        if (updatedSettings.userEmail !== undefined) profileUpdates.email = updatedSettings.userEmail;
+        if (updatedSettings.userName) profileUpdates.display_name = updatedSettings.userName;
+        if (updatedSettings.userEmail) profileUpdates.email = updatedSettings.userEmail;
 
         if (Object.keys(profileUpdates).length > 0) {
           await dbUpdate("users", `id=eq.${userId}`, profileUpdates);
@@ -126,36 +126,27 @@ export function SettingsProvider({ children, initialSettings, initialWhiteTheme 
     };
   }, []);
 
-  // Ref to capture the result of functional setState for side effects
-  const pendingSettingsRef = useRef(null);
-
   const updateSetting = useCallback((key, value) => {
     const validated = validateSetting(key, value);
     setSettingsState((prev) => {
-      const updated = { ...prev, [key]: validated };
-      pendingSettingsRef.current = updated;
-      return updated;
+      const next = { ...prev, [key]: validated };
+      Promise.resolve().then(() => {
+        AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next)).catch(console.error);
+        syncToSupabase(next);
+      });
+      return next;
     });
-    // Side effects outside the updater, using the ref to get the computed value
-    const updated = pendingSettingsRef.current;
-    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated)).catch((e) =>
-      console.error("Failed to save setting:", e)
-    );
-    syncToSupabase(updated);
   }, [syncToSupabase]);
 
   const updateSettings = useCallback((updates) => {
     setSettingsState((prev) => {
-      const updated = { ...prev, ...updates };
-      pendingSettingsRef.current = updated;
-      return updated;
+      const next = { ...prev, ...updates };
+      Promise.resolve().then(() => {
+        AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next)).catch(console.error);
+        syncToSupabase(next);
+      });
+      return next;
     });
-    // Side effects outside the updater, using the ref to get the computed value
-    const updated = pendingSettingsRef.current;
-    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated)).catch((e) =>
-      console.error("Failed to save settings:", e)
-    );
-    syncToSupabase(updated);
   }, [syncToSupabase]);
 
   const contextValue = useMemo(
@@ -194,29 +185,25 @@ export function useSettings() {
     load();
   }, []);
 
-  const pendingRef = useRef(null);
-
   const updateSetting = useCallback((key, value) => {
     const validated = validateSetting(key, value);
     setSettingsState((prev) => {
-      const updated = { ...prev, [key]: validated };
-      pendingRef.current = updated;
-      return updated;
+      const next = { ...prev, [key]: validated };
+      Promise.resolve().then(() => {
+        AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next)).catch(console.error);
+      });
+      return next;
     });
-    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(pendingRef.current)).catch((e) =>
-      console.error("Failed to save setting:", e)
-    );
   }, []);
 
   const updateSettings = useCallback((updates) => {
     setSettingsState((prev) => {
-      const updated = { ...prev, ...updates };
-      pendingRef.current = updated;
-      return updated;
+      const next = { ...prev, ...updates };
+      Promise.resolve().then(() => {
+        AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next)).catch(console.error);
+      });
+      return next;
     });
-    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(pendingRef.current)).catch((e) =>
-      console.error("Failed to save settings:", e)
-    );
   }, []);
 
   return { settings, updateSetting, updateSettings, isLoaded };

@@ -29,7 +29,7 @@ export function QiblaCompass({ qiblaDirection = 0, heading = 0, isWhite = false 
   // Format the bearing label (e.g. "58 NE")
   const formatBearing = (deg) => {
     const normalized = ((deg % 360) + 360) % 360;
-    const rounded = Math.round(normalized);
+    const rounded = Math.round(normalized) % 360;
     let cardinal = "";
     if (rounded >= 337.5 || rounded < 22.5) cardinal = "N";
     else if (rounded < 67.5) cardinal = "NE";

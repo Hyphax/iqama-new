@@ -59,11 +59,15 @@ export function useCountdown(targetTime) {
   }, [targetTime]);
 
   useEffect(() => {
-    if (!targetTime) return;
+    if (!targetTime) {
+      setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+      return;
+    }
 
     // Validate upfront
     if (!parseTargetTime(targetTime)) {
       console.warn(`useCountdown: invalid targetTime format "${targetTime}". Expected "H:MM AM/PM".`);
+      setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
       return;
     }
 

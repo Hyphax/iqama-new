@@ -151,8 +151,11 @@ export async function dbGetOne(table, column, value) {
     table,
     `${column}=eq.${encodeURIComponent(value)}&select=*&limit=1`
   );
-  // rows === null means the request failed; propagate the error.
-  if (rows === null) return { error: true };
+  // rows === null means the request failed or Supabase is not ready.
+  // We return null (not { error: true }) for consistency with the JSDoc
+  // return type (object|null) — callers use truthy checks, so null
+  // covers both "not found" and "error" cases.
+  if (rows === null) return null;
   // rows is [] when no match was found.
   return rows.length > 0 ? rows[0] : null;
 }

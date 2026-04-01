@@ -8,6 +8,7 @@ export function useUserNeed() {
     try {
       const stored = await AsyncStorage.getItem("iqama_user_need");
       if (stored) setUserNeed(stored);
+      else setUserNeed("peace");
     } catch (e) {
       console.error("Failed to load user need:", e);
     }

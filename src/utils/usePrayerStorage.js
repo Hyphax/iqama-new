@@ -23,7 +23,7 @@ async function syncPrayerToSupabase(dateStr, prayers) {
     const userId = await AsyncStorage.getItem("iqama_supabase_user_id");
     if (!userId) return;
 
-    await dbInsert("prayer_logs", {
+    const result = await dbInsert("prayer_logs", {
       user_id: userId,
       date: dateStr,
       fajr: prayers.Fajr || false,
@@ -32,6 +32,9 @@ async function syncPrayerToSupabase(dateStr, prayers) {
       maghrib: prayers.Maghrib || false,
       isha: prayers.Isha || false,
     }, { upsert: true, returnRow: false });
+    if (!result) {
+      await enqueueSync("prayer_sync", { dateStr, prayers });
+    }
   } catch (e) {
     console.warn("[PrayerStorage] Supabase sync error:", e?.message);
     await enqueueSync("prayer_sync", { dateStr, prayers });
@@ -44,10 +47,13 @@ async function syncStreakToSupabase(currentStreak, bestStreak) {
     const userId = await AsyncStorage.getItem("iqama_supabase_user_id");
     if (!userId) return;
 
-    await dbUpdate("users", `id=eq.${userId}`, {
+    const result = await dbUpdate("users", `id=eq.${userId}`, {
       current_streak: currentStreak,
       best_streak: bestStreak,
     });
+    if (!result) {
+      await enqueueSync("streak_sync", { currentStreak, bestStreak });
+    }
   } catch (e) {
     console.warn("[PrayerStorage] Streak sync error:", e?.message);
     await enqueueSync("streak_sync", { currentStreak, bestStreak });
@@ -249,8 +255,10 @@ export function usePrayerStorage() {
     load();
   }, []);
 
-  const togglePrayerComplete = useCallback((prayerName) => {
-    return withLock(async () => {
+  const togglePrayerComplete = useCallback(async (prayerName) => {
+    // Local read-modify-write is serialized inside the lock.
+    // Network sync happens outside to avoid holding the lock during I/O.
+    const { todayKey, updated, streak } = await withLock(async () => {
       try {
         const todayKey = getTodayKey();
         const key = `${STORAGE_KEYS.COMPLETED_PREFIX}${todayKey}`;
@@ -265,17 +273,26 @@ export function usePrayerStorage() {
         const streak = await calculateStreak();
         setStreakData(streak);
 
-        // Sync to Supabase (awaited inside lock to preserve order)
-        await syncPrayerToSupabase(todayKey, updated);
-        await syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
+        return { todayKey, updated, streak };
       } catch (e) {
         console.error("Failed to toggle prayer:", e);
+        return {};
       }
     });
+
+    // Sync to Supabase outside the lock
+    if (todayKey && updated) {
+      await syncPrayerToSupabase(todayKey, updated);
+      if (streak) {
+        await syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
+      }
+    }
   }, []);
 
-  const markPrayerComplete = useCallback((prayerName) => {
-    return withLock(async () => {
+  const markPrayerComplete = useCallback(async (prayerName) => {
+    // Local read-modify-write is serialized inside the lock.
+    // Network sync happens outside to avoid holding the lock during I/O.
+    const { todayKey, updated, streak } = await withLock(async () => {
       try {
         const todayKey = getTodayKey();
         const key = `${STORAGE_KEYS.COMPLETED_PREFIX}${todayKey}`;
@@ -289,13 +306,20 @@ export function usePrayerStorage() {
         const streak = await calculateStreak();
         setStreakData(streak);
 
-        // Sync to Supabase (awaited inside lock to preserve order)
-        await syncPrayerToSupabase(todayKey, updated);
-        await syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
+        return { todayKey, updated, streak };
       } catch (e) {
         console.error("Failed to mark prayer:", e);
+        return {};
       }
     });
+
+    // Sync to Supabase outside the lock
+    if (todayKey && updated) {
+      await syncPrayerToSupabase(todayKey, updated);
+      if (streak) {
+        await syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
+      }
+    }
   }, []);
 
   return {

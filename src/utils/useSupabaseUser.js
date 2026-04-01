@@ -8,7 +8,7 @@
  *   const { userId, isReady, syncProfile, updateProfile } = useSupabaseUser();
  */
 
-import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { dbInsert, dbGetOne, dbUpdate, dbSelect, IS_SUPABASE_READY } from "./supabaseClient";
 import { getMySquadCode } from "./useSquadSync";
@@ -28,6 +28,7 @@ export function SupabaseUserProvider({ children }) {
   const [userId, setUserId] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [isReady, setIsReady] = useState(false);
+  const pendingUpdatesRef = useRef([]);
 
   // ── Initialize: find or create user ──────────────────────────────────────
   useEffect(() => {
@@ -116,9 +117,33 @@ export function SupabaseUserProvider({ children }) {
     })();
   }, []);
 
+  // ── Flush pending updates once userId becomes available ──────────────────
+  useEffect(() => {
+    if (!userId || !IS_SUPABASE_READY || pendingUpdatesRef.current.length === 0) return;
+    const pending = pendingUpdatesRef.current;
+    pendingUpdatesRef.current = [];
+    // Merge all queued updates into one batch
+    const merged = Object.assign({}, ...pending);
+    (async () => {
+      try {
+        const success = await dbUpdate("users", `id=eq.${userId}`, merged);
+        if (success) {
+          setUserProfile((prev) => (prev ? { ...prev, ...merged } : merged));
+        }
+      } catch (e) {
+        console.warn("[SupabaseUser] flush pending updates error:", e?.message);
+      }
+    })();
+  }, [userId]);
+
   // ── Update profile fields ────────────────────────────────────────────────
   const updateProfile = useCallback(async (updates) => {
-    if (!userId || !IS_SUPABASE_READY) return false;
+    if (!IS_SUPABASE_READY) return false;
+    if (!userId) {
+      // Buffer the update until userId is available
+      pendingUpdatesRef.current.push(updates);
+      return true;
+    }
     try {
       const success = await dbUpdate("users", `id=eq.${userId}`, updates);
       if (success) {

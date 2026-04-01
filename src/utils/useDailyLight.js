@@ -12,6 +12,8 @@ export function useDailyLight(userNeed) {
         throw new Error("Perplexity API key is not configured. Please set EXPO_PUBLIC_PERPLEXITY_API_KEY.");
       }
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
       let response;
       try {
         response = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -20,6 +22,7 @@ export function useDailyLight(userNeed) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
           },
+          signal: controller.signal,
           body: JSON.stringify({
             model: "sonar",
             messages: [
@@ -41,6 +44,8 @@ Reply ONLY in this exact JSON format (no markdown, no extra text):
         });
       } catch (e) {
         throw new Error(`Network error fetching daily light: ${e?.message || "Unknown error"}`);
+      } finally {
+        clearTimeout(timeout);
       }
 
       if (!response.ok) {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity,
   RefreshControl, Share as RNShare, Dimensions,
@@ -334,7 +334,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
 
               {/* Action buttons */}
               <View style={{ flexDirection: "row", gap: 18, alignItems: "center" }}>
-                <TouchableOpacity onPress={handleLikePress} hitSlop={12} style={{ position: "relative" }}>
+                <TouchableOpacity onPress={handleLikePress} hitSlop={12} style={{ position: "relative" }} accessibilityRole="button" accessibilityLabel={liked ? "Remove like" : "Like dua"}>
                   <HeartBurst active={heartBurst} />
                   <Heart size={18}
                     color={liked ? "#FF4C6E" : C.iconMuted}
@@ -346,7 +346,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
                     } : {}}
                   />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={onCopy} hitSlop={12}>
+                <TouchableOpacity onPress={onCopy} hitSlop={12} accessibilityRole="button" accessibilityLabel="Copy dua">
                   <Copy size={18} color={copied ? accent : C.iconMuted}
                     style={copied ? {
                       shadowColor: accent,
@@ -355,7 +355,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
                     } : {}}
                   />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={onShare} hitSlop={12}>
+                <TouchableOpacity onPress={onShare} hitSlop={12} accessibilityRole="button" accessibilityLabel="Share dua">
                   <Share2 size={18} color={C.iconMuted} />
                 </TouchableOpacity>
               </View>
@@ -422,11 +422,20 @@ export default function DuaScreen() {
     setLiked((p) => ({ ...p, [i]: !p[i] }));
   }, []);
 
+  const copiedTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
+
   const handleCopy = useCallback(async (dua, i) => {
     await Clipboard.setStringAsync(`${dua.arabic}\n\n${dua.transliteration}\n\n${dua.translation}\n\n— ${dua.reference}`);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
     setCopied(i);
-    setTimeout(() => setCopied(null), 2000);
+    copiedTimerRef.current = setTimeout(() => setCopied(null), 2000);
   }, []);
 
   const handleShare = useCallback(async (dua) => {

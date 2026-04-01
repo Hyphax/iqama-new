@@ -518,7 +518,11 @@ export default function MoodScreen() {
     await AsyncStorage.setItem("iqama_user_mood", selected);
 
     // Sync to Supabase
-    await updateProfile({ mood: selected });
+    try {
+      await updateProfile({ mood: selected });
+    } catch (e) {
+      console.warn("[MoodScreen] Profile sync failed:", e?.message);
+    }
 
     router.push("/onboarding/addiction");
   }, [selected, updateProfile]);

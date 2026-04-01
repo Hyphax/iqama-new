@@ -200,6 +200,7 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
   const [squadData,   setSquadData]   = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [syncing,     setSyncing]     = useState(false);
+  const [hasPersistentCode, setHasPersistentCode] = useState(false);
 
   const isMounted  = useRef(true);
   const pollRef    = useRef(null);
@@ -208,11 +209,12 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
   useEffect(() => {
     isMounted.current = true;
     (async () => {
-      const { code }  = await getMySquadCode();
+      const { code, fromStorage }  = await getMySquadCode();
       const raw   = await AsyncStorage.getItem(FRIEND_CODES_KEY);
       const codes = raw ? JSON.parse(raw) : [];
       if (isMounted.current) {
         setMyCode(code);
+        setHasPersistentCode(fromStorage);
         setFriendCodes(codes);
       }
     })();
@@ -221,9 +223,9 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
 
   // ── Upload my prayer data whenever it changes ─────────────────────────────
   useEffect(() => {
-    if (!myCode || !displayName) return;
+    if (!myCode || !displayName || !hasPersistentCode) return;
     syncMyData({ code: myCode, displayName, prayers: myPrayers, streak: myStreak });
-  }, [myCode, displayName, myPrayers, myStreak]);
+  }, [myCode, displayName, myPrayers, myStreak, hasPersistentCode]);
 
   // ── Fetch all friends in parallel ─────────────────────────────────────────
   const fetchAllFriends = useCallback(async (codes) => {

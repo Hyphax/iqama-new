@@ -46,8 +46,10 @@ const KeyboardAvoidingAnimatedView = React.forwardRef((props, ref) => {
       bottomRef.current = 0;
     };
 
-    const showSubscription = Keyboard.addListener('keyboardWillShow', onKeyboardShow);
-    const hideSubscription = Keyboard.addListener('keyboardWillHide', onKeyboardHide);
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSubscription = Keyboard.addListener(showEvent, onKeyboardShow);
+    const hideSubscription = Keyboard.addListener(hideEvent, onKeyboardHide);
 
     return () => {
       showSubscription.remove();
@@ -109,6 +111,7 @@ const KeyboardAvoidingAnimatedView = React.forwardRef((props, ref) => {
   if (Platform.OS === 'web') {
     return (
       <KeyboardAvoidingView
+        ref={ref}
         behavior={behavior}
         style={style}
         contentContainerStyle={contentContainerStyle}

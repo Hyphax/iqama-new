@@ -373,11 +373,11 @@ export default function IdentityScreen() {
     await AsyncStorage.setItem("iqama_user_gender", gender);
 
     // Sync to Supabase
-    await updateProfile({
-      display_name: name.trim(),
-      age: parseInt(age, 10),
-      gender: gender,
-    });
+    try {
+      await updateProfile({ display_name: name.trim(), age: parseInt(age, 10), gender });
+    } catch (e) {
+      console.warn("[IdentityScreen] Profile sync failed:", e?.message);
+    }
 
     router.push("/onboarding/mood");
   }, [name, age, gender, isValid, updateSettings, updateProfile]);

@@ -4,7 +4,7 @@
  */
 export function sanitizeString(str) {
   if (typeof str !== "string") return "";
-  return str.replace(/[\x00-\x1F\x7F]/g, "").trim();
+  return str.replace(/[\x00-\x1F\x7F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, "").trim();
 }
 
 /**
@@ -12,8 +12,14 @@ export function sanitizeString(str) {
  */
 export function clampNumber(val, min, max) {
   const num = Number(val);
-  if (isNaN(num)) return min;
-  return Math.max(min, Math.min(max, num));
+  const minNum = Number(min);
+  const maxNum = Number(max);
+  if (!Number.isFinite(minNum) || !Number.isFinite(maxNum)) {
+    throw new TypeError("clampNumber requires finite min/max bounds");
+  }
+  const [lo, hi] = minNum <= maxNum ? [minNum, maxNum] : [maxNum, minNum];
+  if (!Number.isFinite(num)) return lo;
+  return Math.max(lo, Math.min(hi, num));
 }
 
 /**

@@ -46,12 +46,13 @@ const SlidingIndicator = memo(function SlidingIndicator({ activeIndex, barWidth,
   const prevIndex = useSharedValue(activeIndex.value);
 
   useAnimatedReaction(
-    () => activeIndex.value,
-    (current, previous) => {
-      if (previous !== null && previous !== undefined) {
-        prevIndex.value = previous;
+    () => Math.round(activeIndex.value),
+    (current, prev) => {
+      if (prev !== null && current !== prev) {
+        prevIndex.value = prev;
       }
-    }
+    },
+    []
   );
 
   useEffect(() => {

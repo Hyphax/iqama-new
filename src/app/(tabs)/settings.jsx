@@ -996,7 +996,7 @@ export default function SettingsScreen() {
       </ScrollView>
 
       {/* Picker Modal — glassmorphic */}
-      <Modal visible={!!pickerModal} transparent animationType="fade">
+      <Modal visible={!!pickerModal} transparent animationType="fade" onRequestClose={() => setPickerModal(null)}>
         <TouchableOpacity
           style={{
             flex: 1,
@@ -1104,7 +1104,7 @@ export default function SettingsScreen() {
       </Modal>
 
       {/* Edit Profile Modal — glassmorphic */}
-      <Modal visible={editProfileModal} transparent animationType="fade">
+      <Modal visible={editProfileModal} transparent animationType="fade" onRequestClose={() => setEditProfileModal(false)}>
         <TouchableOpacity
           style={{
             flex: 1,
