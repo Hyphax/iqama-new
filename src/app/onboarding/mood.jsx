@@ -21,7 +21,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
   useSharedValue,
@@ -519,10 +518,10 @@ export default function MoodScreen() {
     await AsyncStorage.setItem("iqama_user_mood", selected);
 
     // Sync to Supabase
-    updateProfile({ mood: selected });
+    await updateProfile({ mood: selected });
 
     router.push("/onboarding/addiction");
-  }, [selected]);
+  }, [selected, updateProfile]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#080814" }}>

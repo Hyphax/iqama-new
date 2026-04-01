@@ -32,24 +32,39 @@ function headers(options = {}) {
   return h;
 }
 
+// ─── Timeout ────────────────────────────────────────────────────────────────
+
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/** Create an AbortSignal that fires after REQUEST_TIMEOUT_MS. */
+function timeoutSignal() {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  return controller.signal;
+}
+
 // ─── Generic REST Helpers ────────────────────────────────────────────────────
 
 /**
  * SELECT rows from a table.
+ * Returns [] on success (even if no rows matched).
+ * Returns null on HTTP or network error (callers can distinguish empty vs error).
  * @param {string} table - Table name
  * @param {string} query - PostgREST query string (e.g. "squad_code=eq.ABC123&select=*")
- * @returns {Array|null}
+ * @returns {Array|null} - Array of rows on success, null on error
  */
 export async function dbSelect(table, query = "select=*") {
   if (!IS_SUPABASE_READY) return null;
   try {
     const url = `${SUPABASE_URL}/rest/v1/${table}?${query}`;
-    const res = await fetch(url, { headers: headers() });
+    const res = await fetch(url, { headers: headers(), signal: timeoutSignal() });
     if (!res.ok) {
       console.warn(`[Supabase] SELECT ${table} failed:`, res.status);
       return null;
     }
-    return await res.json();
+    const data = await res.json();
+    // Always return an array on success so callers can distinguish empty from error.
+    return Array.isArray(data) ? data : [];
   } catch (e) {
     console.warn(`[Supabase] SELECT ${table} error:`, e?.message);
     return null;
@@ -70,8 +85,9 @@ export async function dbInsert(table, row, opts = { upsert: true, returnRow: tru
       method: "POST",
       headers: headers(opts),
       body: JSON.stringify(row),
+      signal: timeoutSignal(),
     });
-    if (!res.ok && res.status !== 201) {
+    if (!res.ok) {
       const text = await res.text();
       console.warn(`[Supabase] INSERT ${table} failed:`, res.status, text);
       return null;
@@ -97,11 +113,20 @@ export async function dbInsert(table, row, opts = { upsert: true, returnRow: tru
 export async function dbUpdate(table, filter, data) {
   if (!IS_SUPABASE_READY) return false;
   try {
-    const url = `${SUPABASE_URL}/rest/v1/${table}?${filter}`;
+    // Encode the filter value to prevent injection via the query string.
+    // filter is expected in the form "column=op.value" (e.g. "id=eq.xxx").
+    const eqIdx = filter.indexOf("=");
+    const dotIdx = filter.indexOf(".", eqIdx);
+    const encodedFilter =
+      eqIdx !== -1 && dotIdx !== -1
+        ? `${filter.slice(0, dotIdx + 1)}${encodeURIComponent(filter.slice(dotIdx + 1))}`
+        : filter;
+    const url = `${SUPABASE_URL}/rest/v1/${table}?${encodedFilter}`;
     const res = await fetch(url, {
       method: "PATCH",
       headers: headers(),
       body: JSON.stringify(data),
+      signal: timeoutSignal(),
     });
     if (!res.ok) {
       console.warn(`[Supabase] UPDATE ${table} failed:`, res.status);
@@ -126,5 +151,8 @@ export async function dbGetOne(table, column, value) {
     table,
     `${column}=eq.${encodeURIComponent(value)}&select=*&limit=1`
   );
-  return rows && rows.length > 0 ? rows[0] : null;
+  // rows === null means the request failed; propagate the error.
+  if (rows === null) return { error: true };
+  // rows is [] when no match was found.
+  return rows.length > 0 ? rows[0] : null;
 }

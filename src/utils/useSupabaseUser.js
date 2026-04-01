@@ -8,7 +8,7 @@
  *   const { userId, isReady, syncProfile, updateProfile } = useSupabaseUser();
  */
 
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { dbInsert, dbGetOne, dbUpdate, dbSelect, IS_SUPABASE_READY } from "./supabaseClient";
 import { getMySquadCode } from "./useSquadSync";
@@ -53,7 +53,7 @@ export function SupabaseUserProvider({ children }) {
         }
 
         // No saved user — check by squad_code
-        const squadCode = await getMySquadCode();
+        const { code: squadCode, fromStorage } = await getMySquadCode();
         const existingUser = await dbGetOne("users", "squad_code", squadCode);
 
         if (existingUser) {
@@ -61,6 +61,16 @@ export function SupabaseUserProvider({ children }) {
           await AsyncStorage.setItem(USER_ID_KEY, existingUser.id);
           setUserId(existingUser.id);
           setUserProfile(existingUser);
+          setIsReady(true);
+          return;
+        }
+
+        // Only create a new cloud user if the squad code came from
+        // persistent storage. A fallback (fromStorage=false) code is
+        // ephemeral — using it would risk creating a duplicate user row
+        // on the next successful storage read.
+        if (!fromStorage) {
+          console.warn("[SupabaseUser] Squad code is ephemeral (storage failed); skipping user creation.");
           setIsReady(true);
           return;
         }
@@ -192,20 +202,20 @@ export function SupabaseUserProvider({ children }) {
     }
   }, [userId]);
 
+  const contextValue = useMemo(() => ({
+    userId,
+    userProfile,
+    isReady,
+    isSupabaseReady: IS_SUPABASE_READY,
+    updateProfile,
+    updateCloudSettings,
+    syncPrayerLog,
+    syncStreak,
+    getPrayerLogs,
+  }), [userId, userProfile, isReady, updateProfile, updateCloudSettings, syncPrayerLog, syncStreak, getPrayerLogs]);
+
   return (
-    <SupabaseUserContext.Provider
-      value={{
-        userId,
-        userProfile,
-        isReady,
-        isSupabaseReady: IS_SUPABASE_READY,
-        updateProfile,
-        updateCloudSettings,
-        syncPrayerLog,
-        syncStreak,
-        getPrayerLogs,
-      }}
-    >
+    <SupabaseUserContext.Provider value={contextValue}>
       {children}
     </SupabaseUserContext.Provider>
   );

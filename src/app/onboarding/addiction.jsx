@@ -328,10 +328,10 @@ export default function AddictionScreen() {
     await AsyncStorage.setItem("iqama_scroll_hours", String(hours));
 
     // Sync to Supabase
-    updateProfile({ scroll_hours: hours });
+    await updateProfile({ scroll_hours: hours });
 
     router.push("/onboarding/shocking-math");
-  }, [hours]);
+  }, [hours, updateProfile]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#080814" }}>

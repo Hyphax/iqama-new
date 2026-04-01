@@ -68,11 +68,7 @@ import {
   STORAGE_KEYS,
   getTodayKey,
 } from "@/utils/usePrayerStorage";
-import {
-  useSquad,
-  formatLastSeen,
-  SUPABASE_CONFIGURED,
-} from "@/utils/useSquadSync";
+import { useSquad } from "@/utils/useSquadSync";
 import { SHADOWS, getShadow, WHITE_THEME } from "@/utils/iqamaTheme";
 import { useSettings } from "@/utils/useSettings";
 import { useSkipInitialEntering } from "@/utils/useSkipInitialEntering";
@@ -1609,16 +1605,18 @@ function Tabs({ active, onSwitch, sRef }) {
    ═══════════════════════════════════════════ */
 function LeaderCard({ squad }) {
   const T = useThemeColors();
-  if (!squad.length) return null;
   const sorted = useMemo(
     () =>
-      [...squad].sort((a, b) => {
-        const ac = Object.values(a.prayers).filter(Boolean).length;
-        const bc = Object.values(b.prayers).filter(Boolean).length;
-        return bc - ac || b.streak - a.streak;
-      }),
+      squad.length
+        ? [...squad].sort((a, b) => {
+            const ac = Object.values(a.prayers).filter(Boolean).length;
+            const bc = Object.values(b.prayers).filter(Boolean).length;
+            return bc - ac || b.streak - a.streak;
+          })
+        : [],
     [squad],
   );
+  if (!squad.length) return null;
   const ld = sorted[0];
   const lc = Object.values(ld.prayers).filter(Boolean).length;
 
@@ -2334,7 +2332,7 @@ function SquadPage() {
                     marginBottom: 3,
                   }}
                 >
-                  Squad backend configure nahi hua
+                  Squad backend not configured
                 </Text>
                 <Text
                   style={{
@@ -2344,12 +2342,12 @@ function SquadPage() {
                     lineHeight: 17,
                   }}
                 >
-                  Real squad ke liye Supabase keys add karo. Setup guide dekhne
-                  ke liye{" "}
+                  Add your Supabase keys to enable live squad sync. See the
+                  setup guide in{" "}
                   <Text style={{ color: "#F5C842" }}>
                     apps/mobile/.env.example
                   </Text>{" "}
-                  file padho.
+                  for details.
                 </Text>
               </View>
             </LinearGradient>

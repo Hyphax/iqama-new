@@ -14,6 +14,7 @@ import Animated, {
   interpolate,
   useSharedValue,
   useDerivedValue,
+  useAnimatedReaction,
   Easing,
   Extrapolation,
 } from "react-native-reanimated";
@@ -43,6 +44,15 @@ const SlidingIndicator = memo(function SlidingIndicator({ activeIndex, barWidth,
   const breath = useSharedValue(0);
   // We use previous active to calculate velocity for stretching
   const prevIndex = useSharedValue(activeIndex.value);
+
+  useAnimatedReaction(
+    () => activeIndex.value,
+    (current, previous) => {
+      if (previous !== null && previous !== undefined) {
+        prevIndex.value = previous;
+      }
+    }
+  );
 
   useEffect(() => {
     breath.value = withRepeat(
@@ -179,6 +189,9 @@ const TabItem = memo(function TabItem({ label, icon: Icon, isFocused, onPress, o
       }}
       onPress={onPress}
       onLongPress={onLongPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
+      accessibilityLabel={label}
       style={styles.tabItem}
     >
       <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
@@ -334,7 +347,6 @@ function CustomTabBar({ state, descriptors, navigation, isWhite }) {
         )}
 
         {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
           const label = route.name === 'index' ? 'Home' :
             route.name === 'tracker' ? 'Prayers' :
               route.name === 'qibla' ? 'Qibla' :

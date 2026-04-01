@@ -20,10 +20,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
-  FadeInLeft,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -373,14 +371,14 @@ export default function IdentityScreen() {
     await AsyncStorage.setItem("iqama_user_gender", gender);
 
     // Sync to Supabase
-    updateProfile({
+    await updateProfile({
       display_name: name.trim(),
-      age: age.trim(),
+      age: parseInt(age, 10),
       gender: gender,
     });
 
     router.push("/onboarding/mood");
-  }, [name, age, gender, isValid, updateSettings]);
+  }, [name, age, gender, isValid, updateSettings, updateProfile]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#080814" }}>

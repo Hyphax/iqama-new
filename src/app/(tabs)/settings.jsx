@@ -62,9 +62,9 @@ const { width: SW } = Dimensions.get("window");
 const CALCULATION_METHODS = [
   { key: "ISNA", label: "ISNA" },
   { key: "MWL", label: "Muslim World League" },
-  { key: "EGYPT", label: "Egyptian Authority" },
-  { key: "MAKKAH", label: "Umm Al-Qura" },
-  { key: "KARACHI", label: "Karachi" },
+  { key: "Egypt", label: "Egyptian Authority" },
+  { key: "Makkah", label: "Umm Al-Qura" },
+  { key: "Karachi", label: "Karachi" },
 ];
 const MADHABS = [
   { key: "Hanafi", label: "Hanafi" },

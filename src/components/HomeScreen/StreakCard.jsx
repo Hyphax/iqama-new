@@ -7,14 +7,12 @@ import Animated, {
   FadeInDown,
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedProps,
   withRepeat,
   withSequence,
   withTiming,
   withDelay,
   withSpring,
   Easing,
-  interpolate,
 } from "react-native-reanimated";
 import { SHADOWS } from "@/utils/iqamaTheme";
 

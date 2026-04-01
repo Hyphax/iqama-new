@@ -291,46 +291,6 @@ function FloralCorner({ x, bottom, flip = false, color = "#B8960B" }) {
   );
 }
 
-/* ─── Geometric Islamic star motif ─── */
-function StarMotif({ cx, cy, r = 18, color = "#B8960B", opacity = 0.25 }) {
-  const points = Array.from({ length: 8 }, (_, i) => {
-    const angle = (i * Math.PI) / 4 - Math.PI / 8;
-    const ir = r * 0.42;
-    const x1 = cx + r * Math.cos(angle);
-    const y1 = cy + r * Math.sin(angle);
-    const x2 = cx + ir * Math.cos(angle + Math.PI / 8);
-    const y2 = cy + ir * Math.sin(angle + Math.PI / 8);
-    return `${x1},${y1} ${x2},${y2}`;
-  }).join(" ");
-
-  return (
-    <Svg
-      width={r * 2 + 4}
-      height={r * 2 + 4}
-      viewBox={`${cx - r - 2} ${cy - r - 2} ${r * 2 + 4} ${r * 2 + 4}`}
-      style={{ position: "absolute", opacity }}
-    >
-      <Path d={`M ${points}`} stroke={color} strokeWidth={0.7} fill="none" />
-      <Circle
-        cx={cx}
-        cy={cy}
-        r={r * 0.2}
-        stroke={color}
-        strokeWidth={0.5}
-        fill="none"
-      />
-      <Circle
-        cx={cx}
-        cy={cy}
-        r={r * 0.55}
-        stroke={color}
-        strokeWidth={0.4}
-        fill="none"
-      />
-    </Svg>
-  );
-}
-
 /* ─── Soft ambient glow orb ─── */
 function WarmOrb({ top, left, size, color, animStyle }) {
   return (

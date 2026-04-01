@@ -6,7 +6,6 @@ import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { WHITE_THEME } from "@/utils/iqamaTheme";
 import Animated, {
-  FadeInDown,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,

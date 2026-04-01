@@ -159,8 +159,10 @@ export function AskIslamModal() {
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
-        const s1 = Keyboard.addListener("keyboardWillShow", (e) => setKbHeight(e.endCoordinates.height));
-        const s2 = Keyboard.addListener("keyboardWillHide", () => setKbHeight(0));
+        const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+        const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+        const s1 = Keyboard.addListener(showEvent, (e) => setKbHeight(e.endCoordinates.height));
+        const s2 = Keyboard.addListener(hideEvent, () => setKbHeight(0));
         return () => { s1.remove(); s2.remove(); };
     }, []);
 
