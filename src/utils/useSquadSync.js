@@ -73,13 +73,15 @@ function generateCode() {
 export async function getMySquadCode() {
   try {
     const stored = await AsyncStorage.getItem(MY_CODE_KEY);
-    if (stored) return stored;
+    if (stored) return { code: stored, fromStorage: true };
     const fresh = generateCode();
     await AsyncStorage.setItem(MY_CODE_KEY, fresh);
-    return fresh;
+    return { code: fresh, fromStorage: true };
   } catch {
-    // Fallback: just return a code (won't persist on error, but won't crash)
-    return generateCode();
+    // Fallback: just return a code (won't persist on error, but won't crash).
+    // fromStorage=false signals callers that this code is ephemeral and must
+    // NOT be used to create a new cloud user row (it would be a duplicate).
+    return { code: generateCode(), fromStorage: false };
   }
 }
 
@@ -133,13 +135,18 @@ async function dbFetchByCode(code) {
  */
 export async function syncMyData({ code, displayName, prayers, streak }) {
   if (!code || !displayName) return false;
-  return dbUpsert({
-    user_code:    code,
-    display_name: displayName,
-    prayers:      prayers  ?? {},
-    streak:       streak   ?? 0,
-    updated_at:   new Date().toISOString(),
-  });
+  try {
+    return await dbUpsert({
+      user_code:    code,
+      display_name: displayName,
+      prayers:      prayers  ?? {},
+      streak:       streak   ?? 0,
+      updated_at:   new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn("[Squad] syncMyData failed:", e?.message);
+    return false;
+  }
 }
 
 /**
@@ -193,6 +200,7 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
   const [squadData,   setSquadData]   = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [syncing,     setSyncing]     = useState(false);
+  const [hasPersistentCode, setHasPersistentCode] = useState(false);
 
   const isMounted  = useRef(true);
   const pollRef    = useRef(null);
@@ -201,11 +209,12 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
   useEffect(() => {
     isMounted.current = true;
     (async () => {
-      const code  = await getMySquadCode();
+      const { code, fromStorage }  = await getMySquadCode();
       const raw   = await AsyncStorage.getItem(FRIEND_CODES_KEY);
       const codes = raw ? JSON.parse(raw) : [];
       if (isMounted.current) {
         setMyCode(code);
+        setHasPersistentCode(fromStorage);
         setFriendCodes(codes);
       }
     })();
@@ -214,9 +223,9 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
 
   // ── Upload my prayer data whenever it changes ─────────────────────────────
   useEffect(() => {
-    if (!myCode || !displayName) return;
+    if (!myCode || !displayName || !hasPersistentCode) return;
     syncMyData({ code: myCode, displayName, prayers: myPrayers, streak: myStreak });
-  }, [myCode, displayName, myPrayers, myStreak]);
+  }, [myCode, displayName, myPrayers, myStreak, hasPersistentCode]);
 
   // ── Fetch all friends in parallel ─────────────────────────────────────────
   const fetchAllFriends = useCallback(async (codes) => {
@@ -226,15 +235,22 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
     }
     if (isMounted.current) setSyncing(true);
 
-    const settled = await Promise.allSettled(codes.map(dbFetchByCode));
-    const friends = settled
-      .filter((r) => r.status === "fulfilled" && r.value != null)
-      .map(({ value }) => rowToFriend(value));
+    try {
+      const settled = await Promise.allSettled(codes.map(dbFetchByCode));
+      const friends = settled
+        .filter((r) => r.status === "fulfilled" && r.value != null)
+        .map(({ value }) => rowToFriend(value));
 
-    if (isMounted.current) {
-      setSquadData(friends);
-      setSyncing(false);
-      setLoading(false);
+      if (isMounted.current) {
+        setSquadData(friends);
+      }
+    } catch (e) {
+      console.warn("[Squad] fetchAllFriends failed:", e?.message);
+    } finally {
+      if (isMounted.current) {
+        setSyncing(false);
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -257,29 +273,34 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
    * @returns {Promise<{success:true,name:string}|{error:string}>}
    */
   const addFriend = useCallback(async (rawCode) => {
-    const code = rawCode.trim().toUpperCase();
+    try {
+      const code = rawCode.trim().toUpperCase();
 
-    if (!code || code.length < 4) {
-      return { error: "Code bahut chhota hai!" };
-    }
-    if (code === myCode) {
-      return { error: "Yeh aapka apna code hai 😄" };
-    }
-    if (friendCodes && friendCodes.includes(code)) {
-      return { error: "Yeh dost pehle se squad mein hai!" };
-    }
+      if (!code || code.length < 4) {
+        return { error: "Code bahut chhota hai!" };
+      }
+      if (code === myCode) {
+        return { error: "Yeh aapka apna code hai" };
+      }
+      if (friendCodes && friendCodes.includes(code)) {
+        return { error: "Yeh dost pehle se squad mein hai!" };
+      }
 
-    const { valid, name } = await validateFriendCode(code);
-    if (!valid) {
-      return { error: "Code nahi mila. Dost se sahi code maango." };
+      const { valid, name } = await validateFriendCode(code);
+      if (!valid) {
+        return { error: "Code nahi mila. Dost se sahi code maango." };
+      }
+
+      const updated = [...(friendCodes ?? []), code];
+      if (isMounted.current) setFriendCodes(updated);
+      await AsyncStorage.setItem(FRIEND_CODES_KEY, JSON.stringify(updated));
+      await fetchAllFriends(updated);
+
+      return { success: true, name };
+    } catch (e) {
+      console.warn("[Squad] addFriend failed:", e?.message);
+      return { error: "Friend add karne mein masla hua. Dobara koshish karein." };
     }
-
-    const updated = [...(friendCodes ?? []), code];
-    if (isMounted.current) setFriendCodes(updated);
-    await AsyncStorage.setItem(FRIEND_CODES_KEY, JSON.stringify(updated));
-    await fetchAllFriends(updated);
-
-    return { success: true, name };
   }, [myCode, friendCodes, fetchAllFriends]);
 
   // ── removeFriend ───────────────────────────────────────────────────────────

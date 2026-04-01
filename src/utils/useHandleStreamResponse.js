@@ -1,25 +1,39 @@
 import * as React from 'react';
 
-  function useHandleStreamResponse({
+function useHandleStreamResponse({
   onChunk,
   onFinish
 }) {
   const handleStreamResponse = React.useCallback(
-    async (response) => {
+    async (response, { signal } = {}) => {
       if (response.body) {
         const reader = response.body.getReader();
         if (reader) {
           const decoder = new TextDecoder();
           let content = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              onFinish(content);
-              break;
+          try {
+            while (true) {
+              if (signal?.aborted) {
+                await reader.cancel();
+                break;
+              }
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value, { stream: true });
+              content += chunk;
+              onChunk(content);
             }
-            const chunk = decoder.decode(value, { stream: true });
-            content += chunk;
-            onChunk(content);
+            // Final flush to handle any remaining bytes in the decoder
+            const remaining = decoder.decode();
+            if (remaining) {
+              content += remaining;
+              onChunk(content);
+            }
+          } catch (error) {
+            await reader.cancel();
+            throw error;
+          } finally {
+            onFinish(content);
           }
         }
       }
@@ -30,7 +44,7 @@ import * as React from 'react';
   React.useEffect(() => {
     handleStreamResponseRef.current = handleStreamResponse;
   }, [handleStreamResponse]);
-  return React.useCallback((response) => handleStreamResponseRef.current(response), []); 
+  return React.useCallback((response, options) => handleStreamResponseRef.current(response, options), []);
 }
 
-  export default useHandleStreamResponse;
+export default useHandleStreamResponse;

@@ -6,6 +6,7 @@ import { useAuthStore } from './store';
 
 const callbackUrl = '/api/auth/token';
 const callbackQueryString = `callbackUrl=${callbackUrl}`;
+const expectedOrigin = process.env.EXPO_PUBLIC_PROXY_BASE_URL || '';
 
 /**
  * This renders a WebView for authentication and handles both web and native platforms.
@@ -36,7 +37,7 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
     }
     const handleMessage = (event) => {
       // Verify the origin for security
-      if (event.origin !== process.env.EXPO_PUBLIC_PROXY_BASE_URL) {
+      if (!expectedOrigin || event.origin !== expectedOrigin) {
         return;
       }
       if (event.data.type === 'AUTH_SUCCESS') {
@@ -85,11 +86,20 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
       }}
       onShouldStartLoadWithRequest={(request) => {
         if (request.url === `${baseURL}${callbackUrl}`) {
-          fetch(request.url).then(async (response) => {
-            response.json().then((data) => {
+          fetch(request.url)
+            .then(async (response) => {
+              if (!response.ok) {
+                throw new Error(`Auth callback failed with ${response.status}`);
+              }
+              const data = await response.json();
+              if (!data?.jwt || !data?.user) {
+                throw new Error("Auth callback returned incomplete session");
+              }
               setAuth({ jwt: data.jwt, user: data.user });
+            })
+            .catch((error) => {
+              console.error('Auth callback fetch failed:', error);
             });
-          });
           return false;
         }
         if (request.url === currentURI) return true;

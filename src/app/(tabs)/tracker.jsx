@@ -47,6 +47,7 @@ import Animated, {
   FadeInDown,
   FadeIn,
   FadeInUp,
+  LayoutAnimationConfig,
   useSharedValue,
   useAnimatedStyle,
   useAnimatedProps,
@@ -67,14 +68,10 @@ import {
   STORAGE_KEYS,
   getTodayKey,
 } from "@/utils/usePrayerStorage";
-import {
-  useSquad,
-  formatLastSeen,
-  SUPABASE_CONFIGURED,
-} from "@/utils/useSquadSync";
+import { useSquad } from "@/utils/useSquadSync";
 import { SHADOWS, getShadow, WHITE_THEME } from "@/utils/iqamaTheme";
 import { useSettings } from "@/utils/useSettings";
-import { WhiteBackgroundArt } from "@/components/HomeScreen/WhiteBackgroundArt";
+import { useSkipInitialEntering } from "@/utils/useSkipInitialEntering";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -250,30 +247,8 @@ function Particle({ x, size, color, d }) {
 }
 
 function Ambient() {
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 8 }, () => ({
-        x: Math.random() * SW,
-        size: 1 + Math.random() * 2,
-        d: Math.random() * 5000,
-        color: ["#D4AF37", "#C9A0DC", "#6C8EF5", "#D4AF37"][
-          Math.floor(Math.random() * 4)
-        ],
-      })),
-    [],
-  );
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LinearGradient
-        colors={[
-          "rgba(212,175,55,0.04)",
-          "transparent",
-          "rgba(108,142,245,0.03)",
-          "transparent",
-        ]}
-        locations={[0, 0.3, 0.7, 1]}
-        style={StyleSheet.absoluteFill}
-      />
       <Orb
         color="#D4AF37"
         size={SW * 0.85}
@@ -290,33 +265,6 @@ function Ambient() {
         d={2500}
         dur={11000}
       />
-      <Orb
-        color="#C9A0DC"
-        size={SW * 0.55}
-        x={-SW * 0.15}
-        y={SH * 0.55}
-        d={4500}
-        dur={10000}
-      />
-      <Orb
-        color="#D4AF37"
-        size={SW * 0.4}
-        x={SW * 0.55}
-        y={SH * 0.08}
-        d={3500}
-        dur={8500}
-      />
-      <Orb
-        color="#FF6B8A"
-        size={SW * 0.3}
-        x={SW * 0.7}
-        y={SH * 0.7}
-        d={5000}
-        dur={12000}
-      />
-      {particles.map((p, i) => (
-        <Particle key={i} x={p.x} size={p.size} color={p.color} d={p.d} />
-      ))}
     </View>
   );
 }
@@ -334,7 +282,7 @@ function Shimmer({ color = "#D4AF37", delay: sd = 2000 }) {
           }),
           withDelay(7000, withTiming(-SW, { duration: 0 })),
         ),
-        -1,
+        3,
         false,
       ),
     );
@@ -833,7 +781,7 @@ function StreakCard({ data }) {
                     style={{
                       fontFamily: "Montserrat_300Light",
                       fontSize: 8,
-                      color: T.textMuted,
+                      color: T.isWhite ? WHITE_THEME.textMuted : T.textMuted,
                     }}
                   >
                     {labels[i]}
@@ -992,7 +940,7 @@ function TodayCard({ todayData }) {
                       color: done
                         ? T.text
                         : T.isWhite
-                          ? "rgba(5,5,16,0.25)"
+                          ? WHITE_THEME.textSub
                           : "rgba(255,255,255,0.25)",
                     }}
                   >
@@ -1133,7 +1081,7 @@ function WeekChart({ days }) {
                   fontFamily: "Montserrat_300Light",
                   fontSize: 11,
                   color: T.isWhite
-                    ? "rgba(5,5,16,0.25)"
+                    ? WHITE_THEME.textSub
                     : "rgba(255,255,255,0.25)",
                 }}
               >
@@ -1181,11 +1129,11 @@ function WeekChart({ days }) {
                     : r > 0
                       ? ["#FF6B8A", "#C0392B"]
                       : [
-                          T.border,
-                          T.isWhite
-                            ? "rgba(0,0,0,0.02)"
-                            : "rgba(255,255,255,0.02)",
-                        ];
+                        T.border,
+                        T.isWhite
+                          ? "rgba(0,0,0,0.02)"
+                          : "rgba(255,255,255,0.02)",
+                      ];
               const isT = i === 6;
               return (
                 <View key={i} style={{ alignItems: "center", flex: 1 }}>
@@ -1197,7 +1145,7 @@ function WeekChart({ days }) {
                         c > 0
                           ? bc[0]
                           : T.isWhite
-                            ? "rgba(0,0,0,0.08)"
+                            ? WHITE_THEME.textSub
                             : "rgba(255,255,255,0.1)",
                       marginBottom: 8,
                     }}
@@ -1547,7 +1495,7 @@ function MonthSummary({ stats }) {
                       fontFamily: "Montserrat_300Light",
                       fontSize: 8,
                       color: T.isWhite
-                        ? "rgba(5,5,16,0.25)"
+                        ? WHITE_THEME.textSub
                         : "rgba(255,255,255,0.25)",
                       letterSpacing: 2,
                       marginTop: 4,
@@ -1657,16 +1605,18 @@ function Tabs({ active, onSwitch, sRef }) {
    ═══════════════════════════════════════════ */
 function LeaderCard({ squad }) {
   const T = useThemeColors();
-  if (!squad.length) return null;
   const sorted = useMemo(
     () =>
-      [...squad].sort((a, b) => {
-        const ac = Object.values(a.prayers).filter(Boolean).length;
-        const bc = Object.values(b.prayers).filter(Boolean).length;
-        return bc - ac || b.streak - a.streak;
-      }),
+      squad.length
+        ? [...squad].sort((a, b) => {
+            const ac = Object.values(a.prayers).filter(Boolean).length;
+            const bc = Object.values(b.prayers).filter(Boolean).length;
+            return bc - ac || b.streak - a.streak;
+          })
+        : [],
     [squad],
   );
+  if (!squad.length) return null;
   const ld = sorted[0];
   const lc = Object.values(ld.prayers).filter(Boolean).length;
 
@@ -1853,7 +1803,7 @@ function FriendCard({ friend, index, rank }) {
           }),
           withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
         ),
-        -1,
+        3,
         true,
       );
     }
@@ -2200,7 +2150,7 @@ function SquadPage() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await RNShare.share({ message: shareMsg });
-    } catch {}
+    } catch { }
   }, [shareMsg]);
 
   const handleAddFriend = useCallback(async () => {
@@ -2263,7 +2213,7 @@ function SquadPage() {
   return (
     <ScrollView
       style={{ flex: 1, width: SW }}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }}
       showsVerticalScrollIndicator={false}
     >
       {/* ── Header ─────────────────────────────────── */}
@@ -2382,7 +2332,7 @@ function SquadPage() {
                     marginBottom: 3,
                   }}
                 >
-                  Squad backend configure nahi hua
+                  Squad backend not configured
                 </Text>
                 <Text
                   style={{
@@ -2392,12 +2342,12 @@ function SquadPage() {
                     lineHeight: 17,
                   }}
                 >
-                  Real squad ke liye Supabase keys add karo. Setup guide dekhne
-                  ke liye{" "}
+                  Add your Supabase keys to enable live squad sync. See the
+                  setup guide in{" "}
                   <Text style={{ color: "#F5C842" }}>
                     apps/mobile/.env.example
                   </Text>{" "}
-                  file padho.
+                  for details.
                 </Text>
               </View>
             </LinearGradient>
@@ -2946,6 +2896,7 @@ function SquadPage() {
    ═══════════════════════════════════════════ */
 export default function TrackerScreen() {
   const insets = useSafeAreaInsets();
+  const skipInitialEntering = useSkipInitialEntering();
   const sRef = useRef(null);
   const [page, setPage] = useState(0);
   const { settings } = useSettings();
@@ -3026,18 +2977,16 @@ export default function TrackerScreen() {
   );
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: isWhite
-          ? "#F9F6F0"
-          : "rgba(5,5,16,0.55)",
-      }}
-    >
+    <LayoutAnimationConfig skipEntering={skipInitialEntering}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: isWhite
+            ? "#F9F6F0"
+            : "#050510",
+        }}
+      >
       <StatusBar style={isWhite ? "dark" : "light"} />
-      
-      {/* White theme background */}
-      {isWhite && <WhiteBackgroundArt />}
 
       {/* Header */}
       <View style={{ paddingTop: insets.top + 6, paddingBottom: 2 }}>
@@ -3097,7 +3046,7 @@ export default function TrackerScreen() {
           style={{ width: SW }}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingBottom: 140,
+            paddingBottom: 160,
             gap: 16,
           }}
           showsVerticalScrollIndicator={false}
@@ -3118,6 +3067,7 @@ export default function TrackerScreen() {
         {/* Page 2 */}
         <SquadPage />
       </ScrollView>
-    </View>
+      </View>
+    </LayoutAnimationConfig>
   );
 }

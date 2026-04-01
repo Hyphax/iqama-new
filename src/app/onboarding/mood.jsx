@@ -21,7 +21,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
   useSharedValue,
@@ -36,6 +35,7 @@ import Animated, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GoldGradientButton from "@/components/GoldGradientButton";
 import { SHADOWS } from "@/utils/iqamaTheme";
+import { useSupabaseUser } from "@/utils/useSupabaseUser";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -473,6 +473,7 @@ function MoodCard({ mood, selected, onPress, index }) {
 
 export default function MoodScreen() {
   const insets = useSafeAreaInsets();
+  const { updateProfile } = useSupabaseUser();
   const [selected, setSelected] = useState(null);
   const headerLineW = useSharedValue(0);
   const heartPulse = useSharedValue(1);
@@ -515,8 +516,16 @@ export default function MoodScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await AsyncStorage.setItem("iqama_user_mood", selected);
+
+    // Sync to Supabase
+    try {
+      await updateProfile({ mood: selected });
+    } catch (e) {
+      console.warn("[MoodScreen] Profile sync failed:", e?.message);
+    }
+
     router.push("/onboarding/addiction");
-  }, [selected]);
+  }, [selected, updateProfile]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#080814" }}>

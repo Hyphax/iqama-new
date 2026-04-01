@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -8,9 +8,6 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { PRAYER_AURA } from "@/utils/iqamaTheme";
-import { BackgroundAura } from "@/components/HomeScreen/BackgroundAura";
-import { WhiteBackgroundArt } from "@/components/HomeScreen/WhiteBackgroundArt";
 import { HeaderSection } from "@/components/HomeScreen/HeaderSection";
 import { NextPrayerCard } from "@/components/HomeScreen/NextPrayerCard";
 import { FocusButton } from "@/components/HomeScreen/FocusButton";
@@ -20,13 +17,24 @@ import { AfterPrayerDuaCard } from "@/components/HomeScreen/AfterPrayerDuaCard";
 import { AskIslamModal } from "@/components/HomeScreen/AskIslamModal";
 import { usePrayerStorage } from "@/utils/usePrayerStorage";
 import { useSettings } from "@/utils/useSettings";
+import { useNotificationScheduler } from "@/utils/useNotificationScheduler";
 import { useUser } from "@/utils/auth/useUser";
 import { useQuery } from "@tanstack/react-query";
 import * as Location from "expo-location";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { LayoutAnimationConfig } from "react-native-reanimated";
+import { useSkipInitialEntering } from "@/utils/useSkipInitialEntering";
+import { useLaunchOverlay } from "@/utils/useLaunchOverlay";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const skipInitialEntering = useSkipInitialEntering();
+  const hideLaunchOverlay = useLaunchOverlay();
+  const [minuteTick, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setMinuteTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const [location, setLocation] = useState(null);
   const [cityName, setCityName] = useState("Loading...");
   const [country, setCountry] = useState(null);
@@ -35,7 +43,6 @@ export default function HomeScreen() {
     completedPrayers,
     streakData,
     togglePrayerComplete,
-    markPrayerComplete,
   } = usePrayerStorage();
   const { settings, updateSetting } = useSettings();
   const { user } = useUser();
@@ -208,6 +215,9 @@ export default function HomeScreen() {
     gcTime: 1000 * 60 * 60 * 12,
   });
 
+  // Schedule prayer reminder notifications
+  useNotificationScheduler(prayerData, settings);
+
   // Pull to refresh
   const onRefresh = async () => {
     setRefreshing(true);
@@ -215,146 +225,205 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  // Filter out Sunrise for prayer list (not a prayer)
-  const prayerTimesData = (prayerData?.prayers || []).filter(
-    (p) => p.name !== "Sunrise",
-  );
-  const currentPrayerName = getCurrentPrayer(prayerData?.prayers || []);
-  const nextPrayerObj = prayerTimesData.find(
-    (p) => p.name === currentPrayerName,
-  );
-
-  // Enrich prayers with completion status
-  const enrichedPrayers = prayerTimesData.map((p) => ({
-    ...p,
-    completed: completedPrayers[p.name] || false,
-    current: p.name === currentPrayerName,
-  }));
-
-  const currentPrayer = nextPrayerObj?.name || "Asr";
-  const aura = PRAYER_AURA[currentPrayer] || PRAYER_AURA.Asr;
-
-  // Deleted top-level setInterval for countdown to avoid infinite index.jsx re-renders!
-
-  const displayName = user?.name || settings.userName || "Friend";
   const isWhite = settings.whiteTheme === true;
 
+  // Filter out Sunrise for prayer list (not a prayer) — memoized to stabilize references
+  const prayerTimesData = useMemo(
+    () => (prayerData?.prayers || []).filter((p) => p.name !== "Sunrise"),
+    [prayerData?.prayers],
+  );
+
+  const currentPrayerName = useMemo(
+    () => getCurrentPrayer(prayerData?.prayers || []),
+    [prayerData?.prayers, minuteTick],
+  );
+
+  const nextPrayerObj = useMemo(
+    () => prayerTimesData.find((p) => p.name === currentPrayerName),
+    [prayerTimesData, currentPrayerName],
+  );
+
+  // Enrich prayers with completion status — memoized to prevent PrayerRow re-renders
+  const enrichedPrayers = useMemo(
+    () =>
+      prayerTimesData.map((p) => ({
+        ...p,
+        completed: completedPrayers[p.name] || false,
+        current: p.name === currentPrayerName,
+      })),
+    [prayerTimesData, completedPrayers, currentPrayerName],
+  );
+
+  const currentPrayer = nextPrayerObj?.name || "Asr";
+  const displayName = user?.name || settings.userName || "Friend";
+
+  const dateString = useMemo(() => {
+    if (prayerData) {
+      return `${prayerData.gregorianDate} • ${prayerData.hijriDate}`;
+    }
+    return new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }, [prayerData?.gregorianDate, prayerData?.hijriDate]);
+
+  const handleToggleTheme = useCallback(() => {
+    updateSetting("whiteTheme", !isWhite);
+  }, [isWhite, updateSetting]);
+
+  const isHomeStable =
+    cityName !== "Loading..." &&
+    (
+      prayerLoading ||
+      Boolean(prayerData) ||
+      prayerError ||
+      cityName === "Location denied" ||
+      cityName === "Location unavailable"
+    );
+
+  useEffect(() => {
+    if (!isHomeStable) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      hideLaunchOverlay();
+    }, prayerLoading ? 450 : 250);
+
+    return () => clearTimeout(timer);
+  }, [hideLaunchOverlay, isHomeStable, prayerLoading]);
+
   return (
-    <View style={{ flex: 1, backgroundColor: isWhite ? "#F9F6F0" : "#080814" }}>
-      <StatusBar style={isWhite ? "dark" : "light"} />
+    <LayoutAnimationConfig skipEntering={skipInitialEntering}>
+      <View style={{ flex: 1, backgroundColor: isWhite ? '#F9F6F0' : '#050510' }}>
+        <StatusBar style={isWhite ? "dark" : "light"} />
 
-      {/* Background layer — white art or dark aura */}
-      {isWhite ? <WhiteBackgroundArt /> : <BackgroundAura aura={aura} />}
-
-      <AskIslamModal />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 130 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={isWhite ? "#050510" : "#D4AF37"}
-            colors={[isWhite ? "#050510" : "#D4AF37"]}
-          />
-        }
-      >
-        <HeaderSection
-          userName={displayName}
-          location={cityName}
-          isWhite={isWhite}
-          onToggleTheme={() => updateSetting("whiteTheme", !isWhite)}
-          date={
-            prayerData
-              ? `${prayerData.gregorianDate} • ${prayerData.hijriDate}`
-              : new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
+        <AskIslamModal />
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 160 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={isWhite ? "#050510" : "#D4AF37"}
+              colors={[isWhite ? "#050510" : "#D4AF37"]}
+            />
           }
-          insets={insets}
-        />
+        >
+          <HeaderSection
+            userName={displayName}
+            location={cityName}
+            isWhite={isWhite}
+            onToggleTheme={handleToggleTheme}
+            date={dateString}
+            insets={insets}
+            animateOnMount={false}
+          />
 
-        {prayerLoading ? (
-          <Animated.View
-            entering={FadeInDown.delay(300).duration(500)}
-            style={{
-              paddingHorizontal: 20,
-              marginBottom: 24,
-              alignItems: "center",
-              paddingVertical: 60,
-            }}
-          >
-            <ActivityIndicator
-              size="large"
-              color={isWhite ? "#B8860B" : "#D4AF37"}
-            />
-            <Text
+          {prayerLoading ? (
+            <View
               style={{
-                fontFamily: "Montserrat_300Light",
-                fontSize: 13,
-                color: isWhite ? "rgba(5,5,16,0.3)" : "rgba(255,255,255,0.3)",
-                marginTop: 16,
+                paddingHorizontal: 20,
+                marginBottom: 24,
+                alignItems: "center",
+                paddingVertical: 60,
               }}
             >
-              Loading prayer times...
-            </Text>
-          </Animated.View>
-        ) : prayerError ? (
-          <Animated.View
-            entering={FadeInDown.delay(300).duration(500)}
-            style={{
-              paddingHorizontal: 20,
-              marginBottom: 24,
-              alignItems: "center",
-              paddingVertical: 60,
-            }}
-          >
-            <Text
+              <ActivityIndicator
+                size="large"
+                color={isWhite ? "#B8860B" : "#D4AF37"}
+              />
+              <Text
+                style={{
+                  fontFamily: "Montserrat_300Light",
+                  fontSize: 13,
+                  color: isWhite ? "rgba(5,5,16,0.3)" : "rgba(255,255,255,0.3)",
+                  marginTop: 16,
+                }}
+              >
+                Loading prayer times...
+              </Text>
+            </View>
+          ) : prayerError ? (
+            <View
               style={{
-                fontFamily: "Montserrat_400Regular",
-                fontSize: 14,
-                color: isWhite ? "rgba(5,5,16,0.5)" : "rgba(255,255,255,0.5)",
-                textAlign: "center",
+                paddingHorizontal: 20,
+                marginBottom: 24,
+                alignItems: "center",
+                paddingVertical: 60,
               }}
             >
-              Could not load prayer times.{"\n"}Pull down to retry.
-            </Text>
-          </Animated.View>
-        ) : (
-          <>
-            <NextPrayerCard
-              prayerName={currentPrayer}
-              prayerTime={nextPrayerObj?.time || ""}
-              nextPrayerObj={nextPrayerObj}
-              rakats={nextPrayerObj?.rakats}
-              isWhite={isWhite}
-            />
-            {settings.focusModeEnabled && (
-              <FocusButton prayerName={currentPrayer} isWhite={isWhite} />
-            )}
-            <PrayersList
-              prayers={enrichedPrayers}
-              onToggleComplete={togglePrayerComplete}
-              isWhite={isWhite}
-            />
-            <AfterPrayerDuaCard
-              currentPrayerName={currentPrayer}
-              isWhite={isWhite}
-            />
-          </>
-        )}
+              <Text
+                style={{
+                  fontFamily: "Montserrat_400Regular",
+                  fontSize: 14,
+                  color: isWhite ? "rgba(5,5,16,0.5)" : "rgba(255,255,255,0.5)",
+                  textAlign: "center",
+                }}
+              >
+                Could not load prayer times.{"\n"}Pull down to retry.
+              </Text>
+            </View>
+          ) : !location ? (
+            <View
+              style={{
+                paddingHorizontal: 20,
+                marginBottom: 24,
+                alignItems: "center",
+                paddingVertical: 60,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "Montserrat_400Regular",
+                  fontSize: 14,
+                  color: isWhite ? "rgba(5,5,16,0.5)" : "rgba(255,255,255,0.5)",
+                  textAlign: "center",
+                }}
+              >
+                Location access is needed to show{"\n"}prayer times for your area.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <NextPrayerCard
+                prayerName={currentPrayer}
+                prayerTime={nextPrayerObj?.time || ""}
+                nextPrayerObj={nextPrayerObj}
+                rakats={nextPrayerObj?.rakats}
+                isWhite={isWhite}
+                animateOnMount={false}
+              />
+              {settings.focusModeEnabled && (
+                <FocusButton prayerName={currentPrayer} isWhite={isWhite} />
+              )}
+              <PrayersList
+                prayers={enrichedPrayers}
+                onToggleComplete={togglePrayerComplete}
+                isWhite={isWhite}
+                animateOnMount={false}
+              />
+              <AfterPrayerDuaCard
+                currentPrayerName={currentPrayer}
+                isWhite={isWhite}
+                animateOnMount={false}
+              />
+            </>
+          )}
 
-        <StreakCard
-          currentStreak={streakData.currentStreak}
-          streakDays={streakData.streakDays}
-          isWhite={isWhite}
-        />
-      </ScrollView>
-    </View>
+          <StreakCard
+            currentStreak={streakData.currentStreak}
+            streakDays={streakData.streakDays}
+            isWhite={isWhite}
+            animateOnMount={false}
+          />
+        </ScrollView>
+      </View>
+    </LayoutAnimationConfig>
   );
 }
 

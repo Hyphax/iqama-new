@@ -1,28 +1,44 @@
 {
   "expo": {
-    "name": "Anything mobile app",
+    "name": "Iqama",
+    "slug": "iqama",
     "version": "1.0.0",
+    "description": "Iqama is an Islamic prayer times app that provides accurate prayer schedules, Qibla direction, and customizable notifications to help Muslims stay connected with their daily prayers.",
+    "privacyUrl": "https://iqama.app/privacy",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Iqama needs your location to calculate accurate prayer times and Qibla direction for your area.",
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       },
-      "bundleIdentifier": "xyz.create.CreateExpoEnvironment"
+      "bundleIdentifier": "app.iqama.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "versionCode": 1,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM"
       ],
-      "package": "xyz.create.CreateExpoEnvironment"
+      "package": "app.iqama.mobile"
     },
     "plugins": [
       [
@@ -36,7 +52,8 @@
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
-          "resizeMode": "contain"
+          "resizeMode": "contain",
+          "backgroundColor": "#F9F6F0"
         }
       ],
       "expo-audio",
@@ -57,7 +74,22 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#1A5D3A",
+          "sounds": [],
+          "mode": "production"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Iqama needs your location to calculate accurate prayer times and Qibla direction for your area."
+        }
+      ]
     ],
     "web": {
       "bundler": "metro",
@@ -66,10 +98,20 @@
     "experiments": {
       "typedRoutes": true
     },
+    "updates": {
+      "url": "https://u.expo.dev/SET_YOUR_EAS_PROJECT_ID",
+      "fallbackToCacheTimeout": 0
+    },
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "SET_YOUR_EAS_PROJECT_ID"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

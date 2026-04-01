@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { Dimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -36,7 +36,7 @@ function TwinkleStar({ top, left, delay, size = 2 }) {
       withTiming(0.6, { duration: 1500 + Math.random() * 1000, easing: Easing.inOut(Easing.sin) }),
       withTiming(0, { duration: 1500 + Math.random() * 1000, easing: Easing.inOut(Easing.sin) }),
     ), -1, true));
-  }, []);
+  }, [delay]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Animated.View style={[{
@@ -49,7 +49,7 @@ function TwinkleStar({ top, left, delay, size = 2 }) {
   );
 }
 
-export function BackgroundAura({ aura }) {
+export const BackgroundAura = memo(function BackgroundAura({ aura }) {
   // 7 orbs + drift animations
   const o1 = useSharedValue(0.4);
   const o2 = useSharedValue(0.25);
@@ -156,7 +156,7 @@ export function BackgroundAura({ aura }) {
       withTiming(0.16, { duration: 10000, easing: Easing.inOut(Easing.sin) }),
       withTiming(0.03, { duration: 10000, easing: Easing.inOut(Easing.sin) }),
     ), -1, true));
-  }, []);
+  }, [aura]);
 
   const s1 = useAnimatedStyle(() => ({
     opacity: o1.value,
@@ -208,4 +208,4 @@ export function BackgroundAura({ aura }) {
       <TwinkleStar top={SH * 0.88} left={SW * 0.5} delay={7200} size={1.5} />
     </View>
   );
-}
+});

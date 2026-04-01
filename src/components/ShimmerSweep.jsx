@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -13,22 +13,13 @@ import Animated, {
 
 const { width: SW } = Dimensions.get("window");
 
-/**
- * ShimmerSweep — a shared shimmer overlay that sweeps across its parent.
- * Parent must have `overflow: "hidden"` for proper clipping.
- *
- * @param {string} color — the shimmer light color
- * @param {number} [delay=1000] — initial delay before first sweep
- * @param {number} [interval=4000] — pause between sweeps
- * @param {number} [width=70] — width of the shimmer band
- * @param {number} [opacity=0.07] — peak shimmer opacity
- */
-export function ShimmerSweep({
+export const ShimmerSweep = memo(function ShimmerSweep({
   color,
   delay = 1000,
   interval = 4000,
   width = 70,
   opacity = 0.07,
+  repeatCount = -1,
 }) {
   const translateX = useSharedValue(-SW);
 
@@ -40,11 +31,11 @@ export function ShimmerSweep({
           withTiming(SW, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
           withDelay(interval, withTiming(-SW, { duration: 0 })),
         ),
-        -1,
+        repeatCount,
         false,
       ),
     );
-  }, []);
+  }, [delay, interval, repeatCount]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -71,4 +62,4 @@ export function ShimmerSweep({
       />
     </Animated.View>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Check, Trophy, Lock, Clock, X as XIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -49,7 +49,7 @@ function getPrayerStates(prayers) {
   });
 }
 
-function PrayerRow({ prayer, index, onToggleComplete, isWhite }) {
+const PrayerRow = memo(function PrayerRow({ prayer, index, onToggleComplete, isWhite }) {
   const aura = PRAYER_AURA[prayer.name] || PRAYER_AURA.Asr;
   const isLocked = !prayer.isTappable;
   const glowPulse = useSharedValue(0);
@@ -179,12 +179,12 @@ function PrayerRow({ prayer, index, onToggleComplete, isWhite }) {
   // White mode shadow — gives cards visual depth on the cream background
   const rowShadow = isWhite
     ? {
-        shadowColor: prayer.isCurrent ? aura.primary : "#8B6020",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: prayer.isCurrent ? 0.18 : 0.08,
-        shadowRadius: 10,
-        elevation: 3,
-      }
+      shadowColor: prayer.isCurrent ? aura.primary : "#8B6020",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: prayer.isCurrent ? 0.18 : 0.08,
+      shadowRadius: 10,
+      elevation: 3,
+    }
     : {};
 
   // Subtitle text
@@ -202,15 +202,11 @@ function PrayerRow({ prayer, index, onToggleComplete, isWhite }) {
     : prayer.isMissed
       ? "rgba(255,76,110,0.4)"
       : isWhite
-        ? "rgba(5,5,16,0.12)"
+        ? WHITE_THEME.textFaint
         : "rgba(255,255,255,0.1)";
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(200 + index * 80)
-        .duration(500)
-        .springify()
-        .damping(14)}
       style={scaleStyle}
     >
       <TouchableOpacity
@@ -218,7 +214,10 @@ function PrayerRow({ prayer, index, onToggleComplete, isWhite }) {
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={isLocked ? 1 : 0.85}
-        style={{ marginBottom: 8 }}
+        style={{ marginBottom: 8, minHeight: 48 }}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: prayer.completed }}
+        accessibilityLabel={`${prayer.name} at ${prayer.time}, ${prayer.completed ? "completed" : prayer.isMissed ? "missed" : prayer.isCurrent ? "current prayer, tap to mark as prayed" : "upcoming"}`}
       >
         <View
           style={{
@@ -554,16 +553,20 @@ function PrayerRow({ prayer, index, onToggleComplete, isWhite }) {
       </TouchableOpacity>
     </Animated.View>
   );
-}
+});
 
 // Celebration banner when all prayers completed
-function AllCompleteBanner({ isWhite }) {
-  const scale = useSharedValue(0.8);
+const AllCompleteBanner = memo(function AllCompleteBanner({ isWhite, animateOnMount = true }) {
+  const scale = useSharedValue(animateOnMount ? 0.8 : 1);
   const glow = useSharedValue(0);
   const sparkle = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withSpring(1, { damping: 10, stiffness: 80 });
+    if (animateOnMount) {
+      scale.value = withSpring(1, { damping: 10, stiffness: 80 });
+    } else {
+      scale.value = 1;
+    }
     glow.value = withRepeat(
       withSequence(
         withTiming(0.35, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
@@ -580,7 +583,7 @@ function AllCompleteBanner({ isWhite }) {
       -1,
       true,
     );
-  }, []);
+  }, [animateOnMount]);
 
   const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -611,15 +614,15 @@ function AllCompleteBanner({ isWhite }) {
         colors={
           isWhite
             ? [
-                "rgba(0,180,120,0.07)",
-                "rgba(0,160,130,0.04)",
-                "rgba(245,250,248,0.9)",
-              ]
+              "rgba(0,180,120,0.07)",
+              "rgba(0,160,130,0.04)",
+              "rgba(245,250,248,0.9)",
+            ]
             : [
-                "rgba(76,175,80,0.08)",
-                "rgba(212,175,55,0.04)",
-                "rgba(8,8,20,0.65)",
-              ]
+              "rgba(76,175,80,0.08)",
+              "rgba(212,175,55,0.04)",
+              "rgba(8,8,20,0.65)",
+            ]
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -642,10 +645,10 @@ function AllCompleteBanner({ isWhite }) {
             colors={
               isWhite
                 ? [
-                    "rgba(0,180,120,0.12)",
-                    "rgba(0,160,130,0.06)",
-                    "transparent",
-                  ]
+                  "rgba(0,180,120,0.12)",
+                  "rgba(0,160,130,0.06)",
+                  "transparent",
+                ]
                 : ["rgba(76,175,80,0.2)", "rgba(212,175,55,0.1)", "transparent"]
             }
             start={{ x: 0, y: 0.5 }}
@@ -674,21 +677,32 @@ function AllCompleteBanner({ isWhite }) {
       </LinearGradient>
     </Animated.View>
   );
-}
+});
 
-export function PrayersList({ prayers, onToggleComplete, isWhite }) {
+export const PrayersList = memo(function PrayersList({
+  prayers,
+  onToggleComplete,
+  isWhite,
+  animateOnMount = true,
+}) {
+  const [minuteTick, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setMinuteTick((t) => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const done = prayers.filter((p) => p.completed).length;
   const allDone = done === prayers.length && prayers.length > 0;
-  const prayerStates = useMemo(() => getPrayerStates(prayers), [prayers]);
+  const prayerStates = useMemo(() => getPrayerStates(prayers), [prayers, minuteTick]);
   const labelC = isWhite ? WHITE_THEME.textSub : "rgba(212,175,55,0.5)";
   const lineC = isWhite ? WHITE_THEME.gold : "rgba(212,175,55,0.5)";
-  const countC = isWhite ? WHITE_THEME.textTertiary : "rgba(255,255,255,0.2)";
+  const countC = isWhite ? WHITE_THEME.textMuted : "rgba(255,255,255,0.2)";
 
   return (
     <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
       {/* Section header */}
       <Animated.View
-        entering={FadeInDown.delay(180).duration(400)}
+        entering={animateOnMount ? FadeInDown.delay(180).duration(400) : undefined}
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
@@ -754,7 +768,7 @@ export function PrayersList({ prayers, onToggleComplete, isWhite }) {
       </Animated.View>
 
       {/* Celebration banner */}
-      {allDone && <AllCompleteBanner isWhite={isWhite} />}
+      {allDone && <AllCompleteBanner isWhite={isWhite} animateOnMount={animateOnMount} />}
 
       {/* Prayer rows */}
       {prayerStates.map((prayer, i) => (
@@ -768,4 +782,4 @@ export function PrayersList({ prayers, onToggleComplete, isWhite }) {
       ))}
     </View>
   );
-}
+});

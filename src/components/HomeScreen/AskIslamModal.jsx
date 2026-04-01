@@ -1,4 +1,6 @@
-﻿import { useState, useRef, useCallback, useEffect } from "react";
+﻿// WARNING: EXPO_PUBLIC_ keys are embedded in the client bundle.
+// For production, route API calls through your backend to protect this key.
+import { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, TextInput, Modal, ScrollView, Pressable, StyleSheet, Dimensions, Keyboard, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,18 +21,26 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 async function askPerplexity(question) {
-    const response = await fetch("https://api.perplexity.ai/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${PERPLEXITY_API_KEY}` },
-        body: JSON.stringify({
-            model: "sonar",
-            messages: [
-                { role: "system", content: "You are IQAMA's Islamic knowledge assistant. When asked who you are, say 'I am IQAMA Islamic knowledge assistant, here to help you learn about Islam.' Answer questions about Islam with wisdom, citing relevant Quran verses and hadith when appropriate. Keep answers concise (3-5 paragraphs max), warm, and spiritually uplifting. If someone asks a non-Islamic question, gently redirect them to ask about Islam. Format your response in plain text without markdown symbols." },
-                { role: "user", content: question },
-            ],
-            max_tokens: 600, temperature: 0.6,
-        }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let response;
+    try {
+        response = await fetch("https://api.perplexity.ai/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${PERPLEXITY_API_KEY}` },
+            signal: controller.signal,
+            body: JSON.stringify({
+                model: "sonar",
+                messages: [
+                    { role: "system", content: "You are IQAMA's Islamic knowledge assistant. When asked who you are, say 'I am IQAMA Islamic knowledge assistant, here to help you learn about Islam.' Answer questions about Islam with wisdom, citing relevant Quran verses and hadith when appropriate. Keep answers concise (3-5 paragraphs max), warm, and spiritually uplifting. If someone asks a non-Islamic question, gently redirect them to ask about Islam. Format your response in plain text without markdown symbols." },
+                    { role: "user", content: question },
+                ],
+                max_tokens: 600, temperature: 0.6,
+            }),
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
     if (!response.ok) throw new Error("Failed to get answer");
     const json = await response.json();
     const raw = json.choices?.[0]?.message?.content || "Sorry, I could not find an answer right now.";
@@ -156,12 +166,18 @@ export function AskIslamModal() {
     const [kbHeight, setKbHeight] = useState(0);
     const inputRef = useRef(null);
     const scrollRef = useRef(null);
+    const closeTimerRef = useRef(null);
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
-        const s1 = Keyboard.addListener("keyboardWillShow", (e) => setKbHeight(e.endCoordinates.height));
-        const s2 = Keyboard.addListener("keyboardWillHide", () => setKbHeight(0));
-        return () => { s1.remove(); s2.remove(); };
+        const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+        const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+        const s1 = Keyboard.addListener(showEvent, (e) => setKbHeight(e.endCoordinates.height));
+        const s2 = Keyboard.addListener(hideEvent, () => setKbHeight(0));
+        return () => {
+            s1.remove(); s2.remove();
+            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        };
     }, []);
 
     const openModal = useCallback(() => {
@@ -173,7 +189,7 @@ export function AskIslamModal() {
         Keyboard.dismiss();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setVisible(false);
-        setTimeout(() => { setAnswer(""); setError(""); setInputText(""); setAskedQuestion(""); }, 300);
+        closeTimerRef.current = setTimeout(() => { setAnswer(""); setError(""); setInputText(""); setAskedQuestion(""); }, 300);
     }, []);
 
     const handleAsk = useCallback(async (q) => {

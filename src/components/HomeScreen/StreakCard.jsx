@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -7,26 +7,30 @@ import Animated, {
   FadeInDown,
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedProps,
   withRepeat,
   withSequence,
   withTiming,
   withDelay,
   withSpring,
   Easing,
-  interpolate,
 } from "react-native-reanimated";
 import { SHADOWS } from "@/utils/iqamaTheme";
 
 // Animated number that counts up
-function AnimatedCounter({ value, isWhite }) {
-  const scale = useSharedValue(0.5);
-  const opacity = useSharedValue(0);
+function AnimatedCounter({ value, isWhite, animateOnMount = true }) {
+  const scale = useSharedValue(animateOnMount ? 0.5 : 1);
+  const opacity = useSharedValue(animateOnMount ? 0 : 1);
 
   useEffect(() => {
-    scale.value = withDelay(300, withSpring(1, { damping: 10, stiffness: 80 }));
-    opacity.value = withDelay(300, withTiming(1, { duration: 500 }));
-  }, [value]);
+    if (animateOnMount) {
+      scale.value = withDelay(300, withSpring(1, { damping: 10, stiffness: 80 }));
+      opacity.value = withDelay(300, withTiming(1, { duration: 500 }));
+      return;
+    }
+
+    scale.value = 1;
+    opacity.value = 1;
+  }, [animateOnMount, value]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -55,9 +59,9 @@ function AnimatedCounter({ value, isWhite }) {
 }
 
 // Celebration burst particles
-function CelebrationBurst({ active }) {
+function CelebrationBurst({ active, animateOnMount = true }) {
   const particles = [0, 1, 2, 3, 4, 5];
-  return active ? (
+  return active && animateOnMount ? (
     <View style={{ position: "absolute", top: 10, right: 20 }}>
       {particles.map((i) => (
         <CelebrationParticle key={i} index={i} />
@@ -138,12 +142,17 @@ function CelebrationParticle({ index }) {
   );
 }
 
-export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
+export const StreakCard = memo(function StreakCard({
+  currentStreak = 0,
+  streakDays = [],
+  isWhite,
+  animateOnMount = true,
+}) {
   const fireScale = useSharedValue(1);
   const fireRotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0.05);
   const progressWidth = useSharedValue(0);
-  const cardScale = useSharedValue(0.95);
+  const cardScale = useSharedValue(animateOnMount ? 0.95 : 1);
 
   const milestones = [7, 30, 100];
   const nextMilestone = milestones.find((m) => m > currentStreak) || 365;
@@ -151,10 +160,14 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
   const isMilestone = milestones.includes(currentStreak) && currentStreak > 0;
 
   useEffect(() => {
-    cardScale.value = withDelay(
-      500,
-      withSpring(1, { damping: 12, stiffness: 80 }),
-    );
+    if (animateOnMount) {
+      cardScale.value = withDelay(
+        500,
+        withSpring(1, { damping: 12, stiffness: 80 }),
+      );
+    } else {
+      cardScale.value = 1;
+    }
 
     if (currentStreak > 0) {
       fireScale.value = withRepeat(
@@ -191,14 +204,16 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
         true,
       );
     }
-    progressWidth.value = withDelay(
-      600,
-      withTiming(progressPct, {
-        duration: 1200,
-        easing: Easing.out(Easing.cubic),
-      }),
-    );
-  }, [currentStreak]);
+    progressWidth.value = animateOnMount
+      ? withDelay(
+        600,
+        withTiming(progressPct, {
+          duration: 1200,
+          easing: Easing.out(Easing.cubic),
+        }),
+      )
+      : withTiming(progressPct, { duration: 0 });
+  }, [animateOnMount, currentStreak, progressPct]);
 
   const fireStyle = useAnimatedStyle(() => ({
     transform: [
@@ -216,7 +231,6 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(600).duration(600).springify().damping(14)}
       style={[{ paddingHorizontal: 20, marginBottom: 28 }, cardEntrance]}
     >
       <View
@@ -229,6 +243,8 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
             : "rgba(255,140,0,0.12)",
           ...(isWhite ? WHITE_THEME.cardShadowStrong : SHADOWS.card),
         }}
+        accessible={true}
+        accessibilityLabel={`Prayer streak: ${currentStreak} ${currentStreak === 1 ? "day" : "days"}. ${currentStreak > 0 ? `${nextMilestone - currentStreak} days to ${nextMilestone}-day milestone` : "Start your streak today"}`}
       >
         {/* ── White theme: ULTRA PREMIUM warm ivory + amber-honey gradient base ── */}
         {isWhite && (
@@ -276,7 +292,7 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
           </Animated.View>
 
           {/* Celebration burst at milestones */}
-          <CelebrationBurst active={isMilestone} />
+          <CelebrationBurst active={isMilestone} animateOnMount={animateOnMount} />
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
             <Animated.View style={fireStyle}>
@@ -311,7 +327,7 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
               </View>
             </Animated.View>
             <View style={{ flex: 1 }}>
-              <AnimatedCounter value={currentStreak} isWhite={isWhite} />
+              <AnimatedCounter value={currentStreak} isWhite={isWhite} animateOnMount={animateOnMount} />
               <Text
                 style={{
                   fontFamily: "Montserrat_400Regular",
@@ -401,7 +417,7 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
               return (
                 <Animated.View
                   key={i}
-                  entering={FadeInDown.delay(700 + i * 60).duration(300)}
+                  entering={animateOnMount ? FadeInDown.delay(700 + i * 60).duration(300) : undefined}
                   style={{ alignItems: "center", gap: 6 }}
                 >
                   <Text
@@ -455,4 +471,4 @@ export function StreakCard({ currentStreak = 0, streakDays = [], isWhite }) {
       </View>
     </Animated.View>
   );
-}
+});

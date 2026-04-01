@@ -20,10 +20,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
-  FadeInLeft,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -36,6 +34,7 @@ import Animated, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GoldGradientButton from "@/components/GoldGradientButton";
 import { useSettings } from "@/utils/useSettings";
+import { useSupabaseUser } from "@/utils/useSupabaseUser";
 import { SHADOWS } from "@/utils/iqamaTheme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
@@ -335,6 +334,7 @@ const AGE_ACCESSORY_ID = "iqama-age-done-btn";
 export default function IdentityScreen() {
   const insets = useSafeAreaInsets();
   const { updateSettings } = useSettings();
+  const { updateProfile } = useSupabaseUser();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState(null);
@@ -342,7 +342,9 @@ export default function IdentityScreen() {
   const sparkleRot = useSharedValue(0);
   const ageRef = useRef(null);
 
-  const isValid = name.trim().length > 0 && age.trim().length > 0 && gender;
+  const parsedAge = parseInt(age, 10);
+  const isAgeValid = !isNaN(parsedAge) && Number.isInteger(parsedAge) && parsedAge >= 5 && parsedAge <= 120;
+  const isValid = name.trim().length > 0 && isAgeValid && gender;
 
   useEffect(() => {
     headerLineW.value = withDelay(
@@ -369,8 +371,16 @@ export default function IdentityScreen() {
     await updateSettings({ userName: name.trim() });
     await AsyncStorage.setItem("iqama_user_age", age.trim());
     await AsyncStorage.setItem("iqama_user_gender", gender);
+
+    // Sync to Supabase
+    try {
+      await updateProfile({ display_name: name.trim(), age: parseInt(age, 10), gender });
+    } catch (e) {
+      console.warn("[IdentityScreen] Profile sync failed:", e?.message);
+    }
+
     router.push("/onboarding/mood");
-  }, [name, age, gender, isValid, updateSettings]);
+  }, [name, age, gender, isValid, updateSettings, updateProfile]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#080814" }}>
@@ -683,7 +693,9 @@ export default function IdentityScreen() {
                 marginTop: 12,
               }}
             >
-              Please fill in all fields
+              {age.trim().length > 0 && !isAgeValid
+                ? "Please enter a valid age (5\u2013120)"
+                : "Please fill in all fields"}
             </Text>
           )}
         </Animated.View>

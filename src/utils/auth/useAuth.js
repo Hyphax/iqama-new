@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { create } from 'zustand';
 import { useAuthModal, useAuthStore, authKey } from './store';
 
@@ -16,25 +16,42 @@ export const useAuth = () => {
   const { isOpen, close, open } = useAuthModal();
 
   const initiate = useCallback(() => {
-    SecureStore.getItemAsync(authKey).then((auth) => {
-      useAuthStore.setState({
-        auth: auth ? JSON.parse(auth) : null,
-        isReady: true,
+    SecureStore.getItemAsync(authKey)
+      .then((auth) => {
+        useAuthStore.setState({
+          auth: auth ? JSON.parse(auth) : null,
+          isReady: true,
+        });
+      })
+      .catch((e) => {
+        console.error("[Auth] initiate failed:", e?.message);
+        useAuthStore.setState({ auth: null, isReady: true });
       });
-    });
   }, []);
 
   const signIn = useCallback(() => {
-    open({ mode: 'signin' });
+    try {
+      open({ mode: 'signin' });
+    } catch (e) {
+      console.error("[Auth] signIn failed:", e?.message);
+    }
   }, [open]);
   const signUp = useCallback(() => {
-    open({ mode: 'signup' });
+    try {
+      open({ mode: 'signup' });
+    } catch (e) {
+      console.error("[Auth] signUp failed:", e?.message);
+    }
   }, [open]);
 
   const signOut = useCallback(() => {
-    setAuth(null);
-    close();
-  }, [close]);
+    try {
+      setAuth(null);
+      close();
+    } catch (e) {
+      console.error("[Auth] signOut failed:", e?.message);
+    }
+  }, [close, setAuth]);
 
   return {
     isReady,
