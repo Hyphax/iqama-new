@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { MapPin, Moon, Sun, Sparkles, Star } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -30,21 +30,22 @@ function getGreeting() {
 }
 
 // Decorative geometric diamond
-function GeometricAccent({ color, delay }) {
+function GeometricAccent({ color, delay, animateOnMount = true }) {
   const rotate = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  const opacity = useSharedValue(animateOnMount ? 0 : 1);
 
   useEffect(() => {
-    opacity.value = withDelay(delay, withTiming(1, { duration: 800 }));
-    rotate.value = withDelay(
-      delay,
-      withRepeat(
-        withTiming(360, { duration: 20000, easing: Easing.linear }),
-        -1,
-        false,
-      ),
+    const rotation = withRepeat(
+      withTiming(360, { duration: 20000, easing: Easing.linear }),
+      -1,
+      false,
     );
-  }, []);
+
+    opacity.value = animateOnMount
+      ? withDelay(delay, withTiming(1, { duration: 800 }))
+      : withTiming(1, { duration: 0 });
+    rotate.value = animateOnMount ? withDelay(delay, rotation) : rotation;
+  }, [animateOnMount, delay]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -67,7 +68,15 @@ function GeometricAccent({ color, delay }) {
   );
 }
 
-export function HeaderSection({ userName, location, date, insets, isWhite, onToggleTheme }) {
+export const HeaderSection = memo(function HeaderSection({
+  userName,
+  location,
+  date,
+  insets,
+  isWhite,
+  onToggleTheme,
+  animateOnMount = true,
+}) {
   const greeting = getGreeting();
 
   // ── Dark theme colors ──────────────────────────────────────────────────────
@@ -89,9 +98,9 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
   const pillBg2 = isWhite ? "rgba(184,134,11,0.03)" : "rgba(255,255,255,0.03)";
 
   const iconPulse = useSharedValue(1);
-  const lineWidth = useSharedValue(0);
-  const nameOpacity = useSharedValue(0);
-  const nameTranslateY = useSharedValue(20);
+  const lineWidth = useSharedValue(animateOnMount ? 0 : 32);
+  const nameOpacity = useSharedValue(animateOnMount ? 0 : 1);
+  const nameTranslateY = useSharedValue(animateOnMount ? 20 : 0);
   const greetingGlow = useSharedValue(0);
 
   useEffect(() => {
@@ -108,30 +117,37 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
         true,
       );
     }
-    lineWidth.value = withDelay(
-      400,
-      withSpring(32, { damping: 12, stiffness: 80 }),
-    );
-    nameOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-    nameTranslateY.value = withDelay(
-      200,
-      withSpring(0, { damping: 14, stiffness: 90 }),
-    );
-    greetingGlow.value = withDelay(
-      600,
-      withRepeat(
-        withSequence(
-          withTiming(isWhite ? 0.2 : 0.15, {
-            duration: 3000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(0, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
+    const glowLoop = withRepeat(
+      withSequence(
+        withTiming(isWhite ? 0.2 : 0.15, {
+          duration: 3000,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(0, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
       ),
+      -1,
+      true,
     );
-  }, []);
+
+    if (animateOnMount) {
+      lineWidth.value = withDelay(
+        400,
+        withSpring(32, { damping: 12, stiffness: 80 }),
+      );
+      nameOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
+      nameTranslateY.value = withDelay(
+        200,
+        withSpring(0, { damping: 14, stiffness: 90 }),
+      );
+      greetingGlow.value = withDelay(600, glowLoop);
+      return;
+    }
+
+    lineWidth.value = 32;
+    nameOpacity.value = 1;
+    nameTranslateY.value = 0;
+    greetingGlow.value = glowLoop;
+  }, [animateOnMount, greeting.icon, isWhite]);
 
   const iconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: iconPulse.value }],
@@ -178,7 +194,7 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
       >
         {/* Location pill */}
         <Animated.View
-          entering={FadeInLeft.delay(100).duration(500).springify()}
+          entering={animateOnMount ? FadeInLeft.delay(100).duration(500).springify() : undefined}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -223,7 +239,7 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
 
         {/* Theme toggle */}
         {onToggleTheme && (
-          <Animated.View entering={FadeInRight.delay(200).duration(500).springify()}>
+          <Animated.View entering={animateOnMount ? FadeInRight.delay(200).duration(500).springify() : undefined}>
             <Pressable
               onPress={onToggleTheme}
               hitSlop={12}
@@ -254,7 +270,7 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
 
       {/* ── Greeting row ── */}
       <Animated.View
-        entering={FadeInDown.delay(100).duration(500)}
+        entering={animateOnMount ? FadeInDown.delay(100).duration(500) : undefined}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -262,7 +278,7 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
           marginBottom: 8,
         }}
       >
-        <GeometricAccent color={gcd} delay={800} />
+        <GeometricAccent color={gcd} delay={800} animateOnMount={animateOnMount} />
 
         {greeting.icon === "moon" && (
           <Animated.View style={iconStyle}>
@@ -286,7 +302,7 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
           {greeting.text}
         </Text>
 
-        <GeometricAccent color={gcd2} delay={1200} />
+        <GeometricAccent color={gcd2} delay={1200} animateOnMount={animateOnMount} />
       </Animated.View>
 
       {/* ── User name ── */}
@@ -311,7 +327,7 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
 
       {/* ── Date row ── */}
       <Animated.View
-        entering={FadeIn.delay(350).duration(500)}
+        entering={animateOnMount ? FadeIn.delay(350).duration(500) : undefined}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -336,7 +352,7 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
 
         {date?.includes("Ramadan") && (
           <Animated.View
-            entering={FadeInUp.delay(500).duration(400).springify()}
+            entering={animateOnMount ? FadeInUp.delay(500).duration(400).springify() : undefined}
           >
             <Moon size={12} color={WHITE_THEME.gold} fill={WHITE_THEME.gold} />
           </Animated.View>
@@ -368,4 +384,4 @@ export function HeaderSection({ userName, location, date, insets, isWhite, onTog
       </Animated.View>
     </View>
   );
-}
+});

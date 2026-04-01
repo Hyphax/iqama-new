@@ -36,6 +36,7 @@ import Animated, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GoldGradientButton from "@/components/GoldGradientButton";
 import { useSettings } from "@/utils/useSettings";
+import { useSupabaseUser } from "@/utils/useSupabaseUser";
 import { SHADOWS } from "@/utils/iqamaTheme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
@@ -335,6 +336,7 @@ const AGE_ACCESSORY_ID = "iqama-age-done-btn";
 export default function IdentityScreen() {
   const insets = useSafeAreaInsets();
   const { updateSettings } = useSettings();
+  const { updateProfile } = useSupabaseUser();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState(null);
@@ -369,6 +371,14 @@ export default function IdentityScreen() {
     await updateSettings({ userName: name.trim() });
     await AsyncStorage.setItem("iqama_user_age", age.trim());
     await AsyncStorage.setItem("iqama_user_gender", gender);
+
+    // Sync to Supabase
+    updateProfile({
+      display_name: name.trim(),
+      age: age.trim(),
+      gender: gender,
+    });
+
     router.push("/onboarding/mood");
   }, [name, age, gender, isValid, updateSettings]);
 

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { Text, TouchableOpacity, View, Dimensions } from "react-native";
 import { Eye } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,7 +21,7 @@ import { PRAYER_AURA, SHADOWS } from "@/utils/iqamaTheme";
 
 const { width: SW } = Dimensions.get("window");
 
-export function FocusButton({ prayerName, isWhite }) {
+export const FocusButton = memo(function FocusButton({ prayerName, isWhite }) {
   const glowPulse = useSharedValue(0.08);
   const shimmerX = useSharedValue(-100);
   const iconRotate = useSharedValue(0);
@@ -84,7 +84,6 @@ export function FocusButton({ prayerName, isWhite }) {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(300).duration(500).springify().damping(14)}
       style={[{ paddingHorizontal: 20, marginBottom: 20 }, scaleStyle]}
     >
       <TouchableOpacity
@@ -251,4 +250,4 @@ export function FocusButton({ prayerName, isWhite }) {
       </TouchableOpacity>
     </Animated.View>
   );
-}
+});

@@ -33,7 +33,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react-native";
-import { BlurView } from "expo-blur";
+
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as StoreReview from "expo-store-review";
@@ -41,6 +41,7 @@ import Animated, {
   FadeInDown,
   FadeIn,
   FadeInLeft,
+  LayoutAnimationConfig,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -54,7 +55,7 @@ import { useSettings } from "@/utils/useSettings";
 import { useUser } from "@/utils/auth/useUser";
 import { useAuth } from "@/utils/auth/useAuth";
 import { SHADOWS, getShadow } from "@/utils/iqamaTheme";
-import { WhiteBackgroundArt } from "@/components/HomeScreen/WhiteBackgroundArt";
+import { useSkipInitialEntering } from "@/utils/useSkipInitialEntering";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -97,7 +98,7 @@ function useThemeColors() {
     cardBg: w ? "rgba(254,253,251,0.88)" : "rgba(12,12,26,0.55)",
     cardBorder: w ? "rgba(139,90,43,0.08)" : "rgba(255,255,255,0.06)",
     blurTint: w ? "light" : "dark",
-    rowBorder: w ? "rgba(139,90,43,0.06)" : "rgba(255,255,255,0.06)",
+    rowBorder: w ? "rgba(26,20,9,0.06)" : "rgba(255,255,255,0.06)",
     switchTrackFalse: w ? "rgba(139,90,43,0.10)" : "rgba(255,255,255,0.10)",
     modalBg: w ? "rgba(254,253,251,0.96)" : "rgba(12,12,26,0.92)",
     modalOverlay: w ? "rgba(26,20,9,0.42)" : "rgba(0,0,0,0.85)",
@@ -107,189 +108,13 @@ function useThemeColors() {
     inputText: w ? "#1A1409" : "#FAFAFA",
     inputPlaceholder: w ? "rgba(26,20,9,0.28)" : "rgba(255,255,255,0.18)",
     chevron: w ? "rgba(139,105,20,0.18)" : "rgba(255,255,255,0.15)",
-    closeBtnBg: w ? "rgba(139,90,43,0.06)" : "rgba(255,255,255,0.06)",
-    closeBtnIcon: w ? "rgba(26,20,9,0.45)" : "rgba(255,255,255,0.45)",
-    cancelText: w ? "rgba(26,20,9,0.55)" : "rgba(255,255,255,0.45)",
+    closeBtnBg: w ? "rgba(26,20,9,0.06)" : "rgba(255,255,255,0.06)",
+    closeBtnIcon: w ? "rgba(26,20,9,0.55)" : "rgba(255,255,255,0.45)",
+    cancelText: w ? "rgba(26,20,9,0.65)" : "rgba(255,255,255,0.45)",
     statusBar: w ? "dark" : "light",
   };
 }
 
-// Background orbs
-function BackgroundOrbs() {
-  const o1 = useSharedValue(0.05);
-  const o2 = useSharedValue(0.04);
-  const o3 = useSharedValue(0.03);
-  const dx1 = useSharedValue(0);
-  const dy1 = useSharedValue(0);
-  const scale1 = useSharedValue(1);
-  const dx2 = useSharedValue(0);
-
-  useEffect(() => {
-    o1.value = withRepeat(
-      withSequence(
-        withTiming(0.14, { duration: 6000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.04, { duration: 6000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    dx1.value = withRepeat(
-      withSequence(
-        withTiming(25, { duration: 12000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(-25, { duration: 12000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    dy1.value = withRepeat(
-      withSequence(
-        withTiming(-18, { duration: 14000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(18, { duration: 14000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    scale1.value = withRepeat(
-      withSequence(
-        withTiming(1.1, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.94, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    o2.value = withDelay(
-      2500,
-      withRepeat(
-        withSequence(
-          withTiming(0.1, { duration: 7000, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0.02, {
-            duration: 7000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
-      ),
-    );
-    dx2.value = withDelay(
-      1500,
-      withRepeat(
-        withSequence(
-          withTiming(-20, {
-            duration: 10000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(20, { duration: 10000, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      ),
-    );
-    o3.value = withDelay(
-      4000,
-      withRepeat(
-        withSequence(
-          withTiming(0.08, {
-            duration: 9000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(0.02, {
-            duration: 9000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
-      ),
-    );
-  }, []);
-
-  const s1 = useAnimatedStyle(() => ({
-    opacity: o1.value,
-    transform: [
-      { translateX: dx1.value },
-      { translateY: dy1.value },
-      { scale: scale1.value },
-    ],
-  }));
-  const s2 = useAnimatedStyle(() => ({
-    opacity: o2.value,
-    transform: [{ translateX: dx2.value }],
-  }));
-  const s3 = useAnimatedStyle(() => ({ opacity: o3.value }));
-
-  return (
-    <View
-      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-    >
-      <Animated.View
-        style={[
-          {
-            position: "absolute",
-            width: SW * 1.0,
-            height: SW * 1.0,
-            borderRadius: SW * 0.5,
-            top: -SW * 0.45,
-            left: -SW * 0.2,
-          },
-          s1,
-        ]}
-      >
-        <LinearGradient
-          colors={[
-            "#6C8EF5",
-            "rgba(108,142,245,0.3)",
-            "rgba(108,142,245,0.08)",
-            "transparent",
-          ]}
-          start={{ x: 0.5, y: 0.5 }}
-          end={{ x: 1, y: 1 }}
-          style={{ flex: 1, borderRadius: SW * 0.5 }}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[
-          {
-            position: "absolute",
-            width: SW * 0.6,
-            height: SW * 0.6,
-            borderRadius: SW * 0.3,
-            top: SW * 0.9,
-            right: -SW * 0.15,
-          },
-          s2,
-        ]}
-      >
-        <LinearGradient
-          colors={["#D4AF37", "rgba(212,175,55,0.2)", "transparent"]}
-          start={{ x: 0.5, y: 0.5 }}
-          end={{ x: 1, y: 1 }}
-          style={{ flex: 1, borderRadius: SW * 0.3 }}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[
-          {
-            position: "absolute",
-            width: SW * 0.5,
-            height: SW * 0.5,
-            borderRadius: SW * 0.25,
-            top: SW * 1.6,
-            left: -SW * 0.1,
-          },
-          s3,
-        ]}
-      >
-        <LinearGradient
-          colors={["#C9A0DC", "rgba(201,160,220,0.2)", "transparent"]}
-          start={{ x: 0.5, y: 0.5 }}
-          end={{ x: 1, y: 1 }}
-          style={{ flex: 1, borderRadius: SW * 0.25 }}
-        />
-      </Animated.View>
-    </View>
-  );
-}
 
 // Shimmer sweep
 function ShimmerSweep({ color }) {
@@ -302,7 +127,7 @@ function ShimmerSweep({ color }) {
           withTiming(SW, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
           withDelay(6000, withTiming(-SW, { duration: 0 })),
         ),
-        -1,
+        3,
         false,
       ),
     );
@@ -396,7 +221,7 @@ function SettingRow({
               style={{
                 fontFamily: "Montserrat_300Light",
                 fontSize: 13,
-                color: C.textTertiary,
+                color: C.isWhite ? "rgba(26,20,9,0.45)" : C.textTertiary,
               }}
             >
               {value}
@@ -517,6 +342,7 @@ function SectionHeader({ title, delay = 0, color = "rgba(212,175,55,0.5)" }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSetting } = useSettings();
+  const skipInitialEntering = useSkipInitialEntering();
   const C = useThemeColors();
   const { user } = useUser();
   const { signOut, isAuthenticated } = useAuth();
@@ -543,7 +369,7 @@ export default function SettingsScreen() {
           withTiming(0.1, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
           withTiming(0, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
         ),
-        -1,
+        3,
         true,
       ),
     );
@@ -552,7 +378,7 @@ export default function SettingsScreen() {
         withTiming(1.12, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
         withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
       ),
-      -1,
+      3,
       true,
     );
     profileGlow.value = withRepeat(
@@ -560,7 +386,7 @@ export default function SettingsScreen() {
         withTiming(0.15, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
         withTiming(0.02, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
       ),
-      -1,
+      3,
       true,
     );
     avatarScale.value = withDelay(
@@ -626,7 +452,7 @@ export default function SettingsScreen() {
         message:
           "Check out Iqama — a beautiful prayer app 🤲\n\nhttps://iqama.app",
       });
-    } catch {}
+    } catch { }
   }, []);
   const handlePrivacy = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -636,7 +462,7 @@ export default function SettingsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
       "About Iqama",
-      "Iqama v1.0\n\nA prayer companion designed for the Ummah. 🤲",
+      "Iqama v1.0\n\nA prayer companion designed for the Ummah.\n\nDeveloped by mdshoeb",
       [{ text: "JazakAllah Khair" }],
     );
   }, []);
@@ -648,22 +474,20 @@ export default function SettingsScreen() {
   }, []);
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.isWhite
-          ? "#F9F6F0"
-          : "rgba(8,8,20,0.65)",
-      }}
-    >
+    <LayoutAnimationConfig skipEntering={skipInitialEntering}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.isWhite
+            ? "#F9F6F0"
+            : "#080814",
+        }}
+      >
       <StatusBar style={C.statusBar} />
-
-      {/* White theme background */}
-      {C.isWhite && <WhiteBackgroundArt />}
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 150 }}
+        contentContainerStyle={{ paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20 }}>
@@ -766,10 +590,7 @@ export default function SettingsScreen() {
                 ...getShadow(C.isWhite, "card"),
               }}
             >
-              <BlurView
-                intensity={C.isWhite ? 40 : 25}
-                tint={C.blurTint}
-                style={{
+              <View style={{
                   padding: 28,
                   alignItems: "center",
                   backgroundColor: C.cardBg,
@@ -890,7 +711,7 @@ export default function SettingsScreen() {
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
-              </BlurView>
+              </View>
             </View>
           </Animated.View>
 
@@ -912,10 +733,7 @@ export default function SettingsScreen() {
                 ...getShadow(C.isWhite, "soft"),
               }}
             >
-              <BlurView
-                intensity={C.isWhite ? 40 : 18}
-                tint={C.blurTint}
-                style={{ paddingHorizontal: 20, backgroundColor: C.cardBg }}
+              <View style={{ paddingHorizontal: 20, backgroundColor: C.cardBg }}
               >
                 {!C.isWhite && <ShimmerSweep color="#6C8EF5" />}
                 <SettingRow
@@ -968,7 +786,7 @@ export default function SettingsScreen() {
                     )
                   }
                 />
-              </BlurView>
+              </View>
             </View>
           </Animated.View>
 
@@ -990,10 +808,7 @@ export default function SettingsScreen() {
                 ...getShadow(C.isWhite, "soft"),
               }}
             >
-              <BlurView
-                intensity={C.isWhite ? 40 : 18}
-                tint={C.blurTint}
-                style={{ paddingHorizontal: 20, backgroundColor: C.cardBg }}
+              <View style={{ paddingHorizontal: 20, backgroundColor: C.cardBg }}
               >
                 {!C.isWhite && <ShimmerSweep color="#D4AF37" />}
                 <ToggleRow
@@ -1017,14 +832,8 @@ export default function SettingsScreen() {
                   iconColor="#FF8C00"
                   onValueChange={(v) => updateSetting("streakReminders", v)}
                 />
-                <ToggleRow
-                  title="White Theme"
-                  value={settings.whiteTheme}
-                  icon={Sun}
-                  iconColor="#F5C842"
-                  onValueChange={(v) => updateSetting("whiteTheme", v)}
-                />
-              </BlurView>
+
+              </View>
             </View>
           </Animated.View>
 
@@ -1046,10 +855,7 @@ export default function SettingsScreen() {
                 ...getShadow(C.isWhite, "soft"),
               }}
             >
-              <BlurView
-                intensity={C.isWhite ? 40 : 18}
-                tint={C.blurTint}
-                style={{ paddingHorizontal: 20, backgroundColor: C.cardBg }}
+              <View style={{ paddingHorizontal: 20, backgroundColor: C.cardBg }}
               >
                 {!C.isWhite && <ShimmerSweep color="#C9A0DC" />}
                 <SettingRow
@@ -1084,7 +890,7 @@ export default function SettingsScreen() {
                   }
                   onPress={handleAbout}
                 />
-              </BlurView>
+              </View>
             </View>
           </Animated.View>
 
@@ -1109,10 +915,7 @@ export default function SettingsScreen() {
                     overflow: "hidden",
                   }}
                 >
-                  <BlurView
-                    intensity={12}
-                    tint={C.blurTint}
-                    style={{
+                  <View style={{
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1143,7 +946,7 @@ export default function SettingsScreen() {
                     >
                       Sign Out
                     </Text>
-                  </BlurView>
+                  </View>
                 </View>
               </TouchableOpacity>
             </Animated.View>
@@ -1174,6 +977,17 @@ export default function SettingsScreen() {
             >
               IQAMA v1.0
             </Text>
+            <Text
+              style={{
+                fontFamily: "Montserrat_400Regular",
+                fontSize: 10,
+                color: C.textFaint,
+                letterSpacing: 0.5,
+                marginTop: 6,
+              }}
+            >
+              Developed by mdshoeb
+            </Text>
           </Animated.View>
         </View>
       </ScrollView>
@@ -1198,10 +1012,7 @@ export default function SettingsScreen() {
               borderColor: C.modalBorder,
             }}
           >
-            <BlurView
-              intensity={40}
-              tint={C.blurTint}
-              style={{ paddingBottom: 40, backgroundColor: C.modalBg }}
+            <View style={{ paddingBottom: 40, backgroundColor: C.modalBg }}
             >
               <View
                 style={{
@@ -1284,7 +1095,7 @@ export default function SettingsScreen() {
                   )}
                 </TouchableOpacity>
               ))}
-            </BlurView>
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1310,10 +1121,7 @@ export default function SettingsScreen() {
                 borderColor: C.modalBorder,
               }}
             >
-              <BlurView
-                intensity={40}
-                tint={C.blurTint}
-                style={{ padding: 24, backgroundColor: C.modalBg }}
+              <View style={{ padding: 24, backgroundColor: C.modalBg }}
               >
                 <Text
                   style={{
@@ -1444,11 +1252,12 @@ export default function SettingsScreen() {
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
-              </BlurView>
+              </View>
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-    </View>
+      </View>
+    </LayoutAnimationConfig>
   );
 }

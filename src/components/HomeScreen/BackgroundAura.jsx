@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { Dimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -49,7 +49,7 @@ function TwinkleStar({ top, left, delay, size = 2 }) {
   );
 }
 
-export function BackgroundAura({ aura }) {
+export const BackgroundAura = memo(function BackgroundAura({ aura }) {
   // 7 orbs + drift animations
   const o1 = useSharedValue(0.4);
   const o2 = useSharedValue(0.25);
@@ -208,4 +208,4 @@ export function BackgroundAura({ aura }) {
       <TwinkleStar top={SH * 0.88} left={SW * 0.5} delay={7200} size={1.5} />
     </View>
   );
-}
+});

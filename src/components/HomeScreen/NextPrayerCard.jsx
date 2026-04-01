@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, memo } from "react";
 import { View, Text, Dimensions } from "react-native";
 import Svg, {
   Circle as SvgCircle,
@@ -35,70 +35,71 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const AnimatedCircle = Animated.createAnimatedComponent(SvgCircle);
 
 // Floating particle dot with more dramatic movement
-function FloatingDot({ color, delay, top, left, size = 3, drift = 15 }) {
-  const opacity = useSharedValue(0);
+const FloatingDot = memo(function FloatingDot({
+  color,
+  delay,
+  top,
+  left,
+  size = 3,
+  drift = 15,
+  animateOnMount = true,
+}) {
+  const opacity = useSharedValue(animateOnMount ? 0 : 0.5);
   const translateY = useSharedValue(0);
   const translateX = useSharedValue(0);
-  const scale = useSharedValue(0.5);
+  const scale = useSharedValue(animateOnMount ? 0.5 : 1);
 
   useEffect(() => {
-    opacity.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(0.7, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
+    const opacityLoop = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
       ),
+      -1,
+      true,
     );
-    translateY.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(-drift, {
-            duration: 3500,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(drift, {
-            duration: 3500,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
+    const translateYLoop = withRepeat(
+      withSequence(
+        withTiming(-drift, {
+          duration: 3500,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(drift, {
+          duration: 3500,
+          easing: Easing.inOut(Easing.sin),
+        }),
       ),
+      -1,
+      true,
     );
-    translateX.value = withDelay(
-      delay + 500,
-      withRepeat(
-        withSequence(
-          withTiming(drift * 0.6, {
-            duration: 4000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(-drift * 0.6, {
-            duration: 4000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
+    const translateXLoop = withRepeat(
+      withSequence(
+        withTiming(drift * 0.6, {
+          duration: 4000,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(-drift * 0.6, {
+          duration: 4000,
+          easing: Easing.inOut(Easing.sin),
+        }),
       ),
+      -1,
+      true,
     );
-    scale.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(1.3, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0.6, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
+    const scaleLoop = withRepeat(
+      withSequence(
+        withTiming(1.3, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.6, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
       ),
+      -1,
+      true,
     );
-  }, []);
+
+    opacity.value = animateOnMount ? withDelay(delay, opacityLoop) : opacityLoop;
+    translateY.value = animateOnMount ? withDelay(delay, translateYLoop) : translateYLoop;
+    translateX.value = animateOnMount ? withDelay(delay + 500, translateXLoop) : translateXLoop;
+    scale.value = animateOnMount ? withDelay(delay, scaleLoop) : scaleLoop;
+  }, [animateOnMount, delay, drift]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -129,14 +130,15 @@ function FloatingDot({ color, delay, top, left, size = 3, drift = 15 }) {
       ]}
     />
   );
-}
+});
 
-export function NextPrayerCard({
+export const NextPrayerCard = memo(function NextPrayerCard({
   prayerName,
   prayerTime,
   nextPrayerObj,
   rakats,
   isWhite,
+  animateOnMount = true,
 }) {
   const pulse = useSharedValue(1);
   const innerGlow = useSharedValue(0.15);
@@ -144,11 +146,11 @@ export function NextPrayerCard({
   const ringRotate = useSharedValue(0);
   const outerRingScale = useSharedValue(1);
   const outerRing2Scale = useSharedValue(1);
-  const labelOpacity = useSharedValue(0.5);
+  const labelOpacity = useSharedValue(animateOnMount ? 0.5 : 0.9);
   const progressAnim = useSharedValue(CIRCUMFERENCE);
   const urgencyPulse = useSharedValue(0);
-  const cardScale = useSharedValue(0.95);
-  const nameScale = useSharedValue(0.8);
+  const cardScale = useSharedValue(animateOnMount ? 0.95 : 1);
+  const nameScale = useSharedValue(animateOnMount ? 0.8 : 1);
 
   const aura = PRAYER_AURA[prayerName] || PRAYER_AURA.Asr;
 
@@ -196,12 +198,16 @@ export function NextPrayerCard({
   }, [nextPrayerObj]);
 
   useEffect(() => {
-    // Card entrance spring
-    cardScale.value = withSpring(1, { damping: 12, stiffness: 80 });
-    nameScale.value = withDelay(
-      300,
-      withSpring(1, { damping: 10, stiffness: 90 }),
-    );
+    if (animateOnMount) {
+      cardScale.value = withSpring(1, { damping: 12, stiffness: 80 });
+      nameScale.value = withDelay(
+        300,
+        withSpring(1, { damping: 10, stiffness: 90 }),
+      );
+    } else {
+      cardScale.value = 1;
+      nameScale.value = 1;
+    }
 
     // Gentle pulse on the ring
     pulse.value = withRepeat(
@@ -222,23 +228,21 @@ export function NextPrayerCard({
       true,
     );
     // Border glow breathe
-    borderGlow.value = withDelay(
-      500,
-      withRepeat(
-        withSequence(
-          withTiming(0.25, {
-            duration: 3500,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(0.04, {
-            duration: 3500,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
+    const borderLoop = withRepeat(
+      withSequence(
+        withTiming(0.25, {
+          duration: 3500,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(0.04, {
+          duration: 3500,
+          easing: Easing.inOut(Easing.sin),
+        }),
       ),
+      -1,
+      true,
     );
+    borderGlow.value = animateOnMount ? withDelay(500, borderLoop) : borderLoop;
     // Slow ring rotation
     ringRotate.value = withRepeat(
       withTiming(360, { duration: 50000, easing: Easing.linear }),
@@ -255,23 +259,23 @@ export function NextPrayerCard({
       true,
     );
     // Second outer ring — offset phase
-    outerRing2Scale.value = withDelay(
-      2000,
-      withRepeat(
-        withSequence(
-          withTiming(1.08, {
-            duration: 5000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(0.94, {
-            duration: 5000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
+    const outerRing2Loop = withRepeat(
+      withSequence(
+        withTiming(1.08, {
+          duration: 5000,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(0.94, {
+          duration: 5000,
+          easing: Easing.inOut(Easing.sin),
+        }),
       ),
+      -1,
+      true,
     );
+    outerRing2Scale.value = animateOnMount
+      ? withDelay(2000, outerRing2Loop)
+      : outerRing2Loop;
     // Label shimmer
     labelOpacity.value = withRepeat(
       withSequence(
@@ -281,7 +285,7 @@ export function NextPrayerCard({
       -1,
       true,
     );
-  }, []);
+  }, [animateOnMount]);
 
   const cardEntrance = useAnimatedStyle(() => ({
     transform: [{ scale: cardScale.value }],
@@ -321,7 +325,6 @@ export function NextPrayerCard({
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(200).duration(800).springify().damping(14)}
       style={[{ paddingHorizontal: 20, marginBottom: 20 }, cardEntrance]}
     >
       {/* Main glassmorphic card */}
@@ -440,7 +443,7 @@ export function NextPrayerCard({
             ]}
           />
 
-          {/* Floating particles — more of them */}
+          {/* Floating particles */}
           <FloatingDot
             color={aura.primary}
             delay={0}
@@ -448,62 +451,34 @@ export function NextPrayerCard({
             left={25}
             size={3}
             drift={18}
+            animateOnMount={animateOnMount}
           />
           <FloatingDot
             color={aura.accent || aura.primary}
-            delay={600}
+            delay={800}
             top={55}
             left={SW * 0.68}
             size={2.5}
             drift={12}
+            animateOnMount={animateOnMount}
           />
           <FloatingDot
             color={aura.secondary}
-            delay={1200}
+            delay={1600}
             top={95}
             left={40}
             size={2}
             drift={20}
+            animateOnMount={animateOnMount}
           />
           <FloatingDot
             color={aura.primary}
-            delay={1800}
-            top={35}
-            left={SW * 0.5}
-            size={2}
-            drift={14}
-          />
-          <FloatingDot
-            color={aura.accent || aura.primary}
             delay={2400}
             top={125}
             left={SW * 0.35}
-            size={3}
-            drift={16}
-          />
-          <FloatingDot
-            color={aura.secondary}
-            delay={3000}
-            top={70}
-            left={SW * 0.15}
-            size={2}
-            drift={10}
-          />
-          <FloatingDot
-            color={aura.primary}
-            delay={3600}
-            top={145}
-            left={SW * 0.6}
             size={2.5}
-            drift={15}
-          />
-          <FloatingDot
-            color={aura.accent || aura.primary}
-            delay={4200}
-            top={10}
-            left={SW * 0.4}
-            size={1.5}
-            drift={8}
+            drift={14}
+            animateOnMount={animateOnMount}
           />
 
           {/* "NEXT PRAYER" label with shimmer */}
@@ -517,7 +492,7 @@ export function NextPrayerCard({
                   : aura.accent || "rgba(255,255,255,0.6)",
                 letterSpacing: 5,
                 marginBottom: 14,
-                opacity: isWhite ? 0.75 : 0.85,
+                opacity: isWhite ? 0.95 : 0.85,
               },
               labelStyle,
             ]}
@@ -676,7 +651,7 @@ export function NextPrayerCard({
                     fontFamily: "Montserrat_400Regular",
                     fontSize: 16,
                     color: isWhite
-                      ? "rgba(5,5,16,0.55)"
+                      ? "rgba(5,5,16,0.85)"
                       : "rgba(255,255,255,0.80)",
                     letterSpacing: 2,
                   }}
@@ -709,7 +684,7 @@ export function NextPrayerCard({
           {/* Rakat info */}
           {fard > 0 && (
             <Animated.View
-              entering={FadeInDown.delay(600).duration(500).springify()}
+              entering={animateOnMount ? FadeInDown.delay(600).duration(500).springify() : undefined}
               style={{
                 flexDirection: "row",
                 gap: 28,
@@ -723,7 +698,7 @@ export function NextPrayerCard({
                       fontFamily: "Montserrat_700Bold",
                       fontSize: 22,
                       color: isWhite
-                        ? "rgba(5,5,16,0.75)"
+                        ? "#1A1409"
                         : "rgba(255,255,255,0.85)",
                     }}
                   >
@@ -734,7 +709,7 @@ export function NextPrayerCard({
                       fontFamily: "Montserrat_300Light",
                       fontSize: 8,
                       color: isWhite
-                        ? "rgba(5,5,16,0.52)"
+                        ? "rgba(5,5,16,0.65)"
                         : "rgba(255,255,255,0.25)",
                       letterSpacing: 3,
                       marginTop: 3,
@@ -795,7 +770,7 @@ export function NextPrayerCard({
                         fontFamily: "Montserrat_700Bold",
                         fontSize: 22,
                         color: isWhite
-                          ? "rgba(5,5,16,0.75)"
+                          ? "#1A1409"
                           : "rgba(255,255,255,0.85)",
                       }}
                     >
@@ -806,7 +781,7 @@ export function NextPrayerCard({
                         fontFamily: "Montserrat_300Light",
                         fontSize: 8,
                         color: isWhite
-                          ? "rgba(5,5,16,0.52)"
+                          ? "rgba(5,5,16,0.65)"
                           : "rgba(255,255,255,0.25)",
                         letterSpacing: 3,
                         marginTop: 3,
@@ -823,4 +798,4 @@ export function NextPrayerCard({
       </View>
     </Animated.View>
   );
-}
+});

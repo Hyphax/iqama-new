@@ -24,6 +24,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GoldGradientButton from "@/components/GoldGradientButton";
 import { SHADOWS } from "@/utils/iqamaTheme";
+import { useSupabaseUser } from "@/utils/useSupabaseUser";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const SLIDER_W = SW - 80;
@@ -243,6 +244,7 @@ function ProgressDots({ current, total }) {
 
 export default function AddictionScreen() {
   const insets = useSafeAreaInsets();
+  const { updateProfile } = useSupabaseUser();
   const [hours, setHours] = useState(4);
   const thumbX = useSharedValue(
     ((4 - MIN_HOURS) / (MAX_HOURS - MIN_HOURS)) * (SLIDER_W - THUMB_SIZE),
@@ -324,6 +326,10 @@ export default function AddictionScreen() {
   const handleContinue = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await AsyncStorage.setItem("iqama_scroll_hours", String(hours));
+
+    // Sync to Supabase
+    updateProfile({ scroll_hours: hours });
+
     router.push("/onboarding/shocking-math");
   }, [hours]);
 

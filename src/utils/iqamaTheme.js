@@ -95,10 +95,10 @@ export const WHITE_THEME = {
 
   // Typography — warm dark for maximum readability
   text: "#1A1409", // primary — rich warm black
-  textSub: "rgba(26,20,9,0.68)", // secondary — clear readable
-  textTertiary: "rgba(26,20,9,0.48)", // tertiary — supporting info
-  textMuted: "rgba(26,20,9,0.32)", // muted — timestamps / meta
-  textFaint: "rgba(26,20,9,0.18)", // faint — decorative only
+  textSub: "rgba(26,20,9,0.75)", // secondary — boosted from 0.68
+  textTertiary: "rgba(26,20,9,0.55)", // tertiary — boosted from 0.48
+  textMuted: "rgba(26,20,9,0.45)", // muted — boosted from 0.32
+  textFaint: "rgba(26,20,9,0.25)", // faint — boosted from 0.18
 
   // Accents - luxury gold palette
   gold: "#C9A227", // refined gold accent

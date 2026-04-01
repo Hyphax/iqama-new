@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import Svg, {
   Circle,
   Line,
@@ -23,12 +24,12 @@ import Svg, {
   LinearGradient as SvgLinearGradient,
 } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import Animated, {
   FadeInDown,
   FadeIn,
   FadeInLeft,
   FadeInRight,
+  LayoutAnimationConfig,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -43,9 +44,9 @@ import * as Haptics from "expo-haptics";
 import { Navigation, MapPin, AlertCircle, Compass } from "lucide-react-native";
 import { SHADOWS, getShadow } from "@/utils/iqamaTheme";
 import { useSettings } from "@/utils/useSettings";
-import { WhiteBackgroundArt } from "@/components/HomeScreen/WhiteBackgroundArt";
+import { useSkipInitialEntering } from "@/utils/useSkipInitialEntering";
 
-const { width: SW } = Dimensions.get("window");
+const { width: SW, height: SH } = Dimensions.get("window");
 
 const KAABA_LAT = 21.4225;
 const KAABA_LNG = 39.8262;
@@ -90,8 +91,8 @@ function calculateDistance(userLat, userLng) {
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(userLat)) *
-      Math.cos(toRad(KAABA_LAT)) *
-      Math.sin(dLng / 2) ** 2;
+    Math.cos(toRad(KAABA_LAT)) *
+    Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -115,181 +116,6 @@ function getCompassDirection(bearing) {
     "NNW",
   ];
   return dirs[Math.round(bearing / 22.5) % 16];
-}
-
-// Background orbs
-function BackgroundOrbs({ isFacingQibla }) {
-  const o1 = useSharedValue(0.06);
-  const o2 = useSharedValue(0.04);
-  const o3 = useSharedValue(0.03);
-  const dx1 = useSharedValue(0);
-  const dy1 = useSharedValue(0);
-  const scale1 = useSharedValue(1);
-  const dx2 = useSharedValue(0);
-
-  useEffect(() => {
-    o1.value = withRepeat(
-      withSequence(
-        withTiming(0.16, { duration: 6000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.04, { duration: 6000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    dx1.value = withRepeat(
-      withSequence(
-        withTiming(30, { duration: 12000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(-30, { duration: 12000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    dy1.value = withRepeat(
-      withSequence(
-        withTiming(-20, { duration: 14000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(20, { duration: 14000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    scale1.value = withRepeat(
-      withSequence(
-        withTiming(1.12, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.92, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-    o2.value = withDelay(
-      2000,
-      withRepeat(
-        withSequence(
-          withTiming(0.12, {
-            duration: 7000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(0.03, {
-            duration: 7000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
-      ),
-    );
-    dx2.value = withDelay(
-      1500,
-      withRepeat(
-        withSequence(
-          withTiming(-25, {
-            duration: 11000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(25, { duration: 11000, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      ),
-    );
-    o3.value = withDelay(
-      4000,
-      withRepeat(
-        withSequence(
-          withTiming(0.1, { duration: 9000, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0.02, {
-            duration: 9000,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        true,
-      ),
-    );
-  }, []);
-
-  const s1 = useAnimatedStyle(() => ({
-    opacity: o1.value,
-    transform: [
-      { translateX: dx1.value },
-      { translateY: dy1.value },
-      { scale: scale1.value },
-    ],
-  }));
-  const s2 = useAnimatedStyle(() => ({
-    opacity: o2.value,
-    transform: [{ translateX: dx2.value }],
-  }));
-  const s3 = useAnimatedStyle(() => ({ opacity: o3.value }));
-
-  const c1 = isFacingQibla ? "#00FFAA" : "#D4AF37";
-  const c2 = isFacingQibla ? "#D4AF37" : "#B8860B";
-
-  return (
-    <View
-      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-    >
-      <Animated.View
-        style={[
-          {
-            position: "absolute",
-            width: SW * 1.1,
-            height: SW * 1.1,
-            borderRadius: SW * 0.55,
-            top: -SW * 0.5,
-            left: -SW * 0.2,
-          },
-          s1,
-        ]}
-      >
-        <LinearGradient
-          colors={[c1, `${c1}40`, `${c1}10`, "transparent"]}
-          start={{ x: 0.5, y: 0.5 }}
-          end={{ x: 1, y: 1 }}
-          style={{ flex: 1, borderRadius: SW * 0.55 }}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[
-          {
-            position: "absolute",
-            width: SW * 0.7,
-            height: SW * 0.7,
-            borderRadius: SW * 0.35,
-            bottom: SW * 0.1,
-            right: -SW * 0.2,
-          },
-          s2,
-        ]}
-      >
-        <LinearGradient
-          colors={[c2, `${c2}30`, "transparent"]}
-          start={{ x: 0.5, y: 0.5 }}
-          end={{ x: 1, y: 1 }}
-          style={{ flex: 1, borderRadius: SW * 0.35 }}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[
-          {
-            position: "absolute",
-            width: SW * 0.5,
-            height: SW * 0.5,
-            borderRadius: SW * 0.25,
-            top: SW * 0.5,
-            left: SW * 0.3,
-          },
-          s3,
-        ]}
-      >
-        <LinearGradient
-          colors={["#D4AF37", "rgba(212,175,55,0.2)", "transparent"]}
-          start={{ x: 0.5, y: 0.5 }}
-          end={{ x: 1, y: 1 }}
-          style={{ flex: 1, borderRadius: SW * 0.25 }}
-        />
-      </Animated.View>
-    </View>
-  );
 }
 
 // Shimmer sweep
@@ -421,7 +247,7 @@ const StaticCompassSvg = React.memo(function StaticCompassSvg({
         key={`d${i}`}
         x={C_CENTER + r * Math.sin(ang)}
         y={C_CENTER - r * Math.cos(ang) + 4}
-        fill={isWhite ? "rgba(28,19,8,0.30)" : "rgba(255,255,255,0.18)"}
+        fill={isWhite ? "rgba(28,19,8,0.50)" : "rgba(255,255,255,0.18)"}
         fontSize="11"
         fontWeight="400"
         textAnchor="middle"
@@ -559,6 +385,7 @@ const StaticCompassSvg = React.memo(function StaticCompassSvg({
 export default function QiblaScreen() {
   const insets = useSafeAreaInsets();
   const C = useThemeColors();
+  const skipInitialEntering = useSkipInitialEntering();
   const [locationStatus, setLocationStatus] = useState("loading");
   const [userLocation, setUserLocation] = useState(null);
   const [cityName, setCityName] = useState("");
@@ -569,8 +396,13 @@ export default function QiblaScreen() {
   const [headingAccuracy, setHeadingAccuracy] = useState(-1);
 
   const headingSubRef = useRef(null);
+  const hasInitializedRef = useRef(false);
+  const initInFlightRef = useRef(false);
+  const isMountedRef = useRef(true);
   const lastTextUpdateRef = useRef(0);
   const lastFacingRef = useRef(false);
+  const cumulativeRotation = useRef(0);
+  const lastRawHeading = useRef(0);
 
   const compassRotation = useSharedValue(0);
   const qiblaGlow = useSharedValue(0);
@@ -630,95 +462,143 @@ export default function QiblaScreen() {
     }
   }, [isFacingQibla]);
 
-  // Location + heading init
-  useEffect(() => {
-    let isMounted = true;
-    let bearingVal = 0;
+  const cleanupHeadingSubscription = useCallback(() => {
+    if (headingSubRef.current) {
+      headingSubRef.current.remove();
+      headingSubRef.current = null;
+    }
+  }, []);
 
-    async function init() {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          if (isMounted) setLocationStatus("denied");
-          return;
-        }
-
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-        if (!isMounted) return;
-
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        setUserLocation({ lat, lng });
-        bearingVal = calculateQiblaBearing(lat, lng);
-        setQiblaBearing(bearingVal);
-        setDistance(calculateDistance(lat, lng));
-
-        try {
-          const addresses = await Location.reverseGeocodeAsync({
-            latitude: lat,
-            longitude: lng,
-          });
-          if (addresses?.length > 0 && isMounted) {
-            const addr = addresses[0];
-            setCityName(
-              `${addr.city || addr.subregion || addr.region || "Unknown"}, ${addr.country || ""}`,
-            );
-          }
-        } catch {
-          if (isMounted) setCityName("Location found");
-        }
-
-        headingSubRef.current = await Location.watchHeadingAsync(
-          (headingData) => {
-            if (!isMounted) return;
-            const trueHeading =
-              headingData.trueHeading >= 0
-                ? headingData.trueHeading
-                : headingData.magHeading;
-            const accuracy = headingData.accuracy ?? -1;
-
-            compassRotation.value = withTiming(-trueHeading, {
-              duration: 120,
-              easing: Easing.out(Easing.quad),
-            });
-
-            const now = Date.now();
-            if (now - lastTextUpdateRef.current > 100) {
-              lastTextUpdateRef.current = now;
-              setDisplayHeading(Math.round(trueHeading));
-              if (accuracy !== undefined) setHeadingAccuracy(accuracy);
-            }
-
-            let diff = Math.abs(bearingVal - trueHeading);
-            if (diff > 180) diff = 360 - diff;
-            const facing = diff <= 8;
-            if (facing !== lastFacingRef.current) {
-              lastFacingRef.current = facing;
-              setIsFacingQibla(facing);
-            }
-          },
-        );
-
-        compassOpacity.value = withTiming(1, { duration: 800 });
-        bearingScale.value = withDelay(
-          500,
-          withSpring(1, { damping: 10, stiffness: 80 }),
-        );
-        if (isMounted) setLocationStatus("ready");
-      } catch (err) {
-        console.error("Qibla init error:", err);
-        if (isMounted) setLocationStatus("error");
-      }
+  const initializeQibla = useCallback(async ({ requestPermission }) => {
+    if (hasInitializedRef.current || initInFlightRef.current) {
+      return;
     }
 
-    init();
+    initInFlightRef.current = true;
+
+    try {
+      const permission = requestPermission
+        ? await Location.requestForegroundPermissionsAsync()
+        : await Location.getForegroundPermissionsAsync();
+
+      if (!isMountedRef.current) return;
+
+      if (permission.status !== "granted") {
+        if (requestPermission || permission.status === "denied") {
+          setLocationStatus("denied");
+        }
+        return;
+      }
+
+      setLocationStatus("loading");
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      if (!isMountedRef.current) return;
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const bearingVal = calculateQiblaBearing(lat, lng);
+
+      setUserLocation({ lat, lng });
+      setQiblaBearing(bearingVal);
+      setDistance(calculateDistance(lat, lng));
+
+      try {
+        const addresses = await Location.reverseGeocodeAsync({
+          latitude: lat,
+          longitude: lng,
+        });
+
+        if (addresses?.length > 0 && isMountedRef.current) {
+          const addr = addresses[0];
+          setCityName(
+            `${addr.city || addr.subregion || addr.region || "Unknown"}, ${addr.country || ""}`,
+          );
+        }
+      } catch {
+        if (isMountedRef.current) {
+          setCityName("Location found");
+        }
+      }
+
+      cleanupHeadingSubscription();
+      headingSubRef.current = await Location.watchHeadingAsync((headingData) => {
+        if (!isMountedRef.current) return;
+
+        const trueHeading =
+          headingData.trueHeading >= 0
+            ? headingData.trueHeading
+            : headingData.magHeading;
+        const accuracy = headingData.accuracy ?? -1;
+
+        // Smooth rotation across 0deg/360deg so the compass doesn't whip around.
+        let delta = trueHeading - lastRawHeading.current;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        cumulativeRotation.current += delta;
+        lastRawHeading.current = trueHeading;
+
+        compassRotation.value = withTiming(-cumulativeRotation.current, {
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+        });
+
+        const now = Date.now();
+        if (now - lastTextUpdateRef.current > 100) {
+          lastTextUpdateRef.current = now;
+          setDisplayHeading(Math.round(trueHeading));
+          if (accuracy !== undefined) setHeadingAccuracy(accuracy);
+        }
+
+        let diff = Math.abs(bearingVal - trueHeading);
+        if (diff > 180) diff = 360 - diff;
+        const facing = diff <= 8;
+        if (facing !== lastFacingRef.current) {
+          lastFacingRef.current = facing;
+          setIsFacingQibla(facing);
+        }
+      });
+
+      hasInitializedRef.current = true;
+      compassOpacity.value = withTiming(1, { duration: 800 });
+      bearingScale.value = withDelay(
+        500,
+        withSpring(1, { damping: 10, stiffness: 80 }),
+      );
+      setLocationStatus("ready");
+    } catch (err) {
+      console.error("Qibla init error:", err);
+      if (isMountedRef.current) {
+        setLocationStatus("error");
+      }
+    } finally {
+      initInFlightRef.current = false;
+    }
+  }, [
+    bearingScale,
+    cleanupHeadingSubscription,
+    compassOpacity,
+    compassRotation,
+  ]);
+
+  // Preload the screen shell, but only ask for permission once the user actually opens it.
+  useEffect(() => {
+    isMountedRef.current = true;
+    initializeQibla({ requestPermission: false });
+
     return () => {
-      isMounted = false;
-      if (headingSubRef.current) headingSubRef.current.remove();
+      isMountedRef.current = false;
+      cleanupHeadingSubscription();
     };
-  }, []);
+  }, [cleanupHeadingSubscription, initializeQibla]);
+
+  useFocusEffect(
+    useCallback(() => {
+      initializeQibla({ requestPermission: true });
+    }, [initializeQibla]),
+  );
 
   const lineStyle = useAnimatedStyle(() => ({ width: headerLineWidth.value }));
   const headerGlowStyle = useAnimatedStyle(() => ({
@@ -746,11 +626,13 @@ export default function QiblaScreen() {
     [qiblaBearing, C.isWhite],
   );
 
-  const accentColor = isFacingQibla ? "#00FFAA" : "#D4AF37";
+  const accentColor = isFacingQibla
+    ? (C.isWhite ? "#00693A" : "#00FFAA")
+    : (C.isWhite ? "#8B6914" : "#D4AF37");
 
   // Loading state
   const renderLoading = () => (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ minHeight: SH * 0.65, alignItems: "center", justifyContent: "center" }}>
       <ActivityIndicator size="large" color="#D4AF37" />
       <Text
         style={{
@@ -769,7 +651,7 @@ export default function QiblaScreen() {
   const renderDenied = () => (
     <View
       style={{
-        flex: 1,
+        minHeight: SH * 0.65,
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 40,
@@ -861,7 +743,7 @@ export default function QiblaScreen() {
   const renderError = () => (
     <View
       style={{
-        flex: 1,
+        minHeight: SH * 0.65,
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 40,
@@ -987,7 +869,7 @@ export default function QiblaScreen() {
             style={{
               fontFamily: "Montserrat_300Light",
               fontSize: 12,
-              color: C.textTertiary,
+              color: C.isWhite ? "#1A1409" : C.textTertiary,
             }}
           >
             {cityName || "Locating..."}
@@ -1000,7 +882,7 @@ export default function QiblaScreen() {
         entering={FadeIn.delay(200).duration(400)}
         style={{ alignItems: "center", marginBottom: 14 }}
       >
-        {headingAccuracy >= 0 && headingAccuracy < 2 && (
+        {headingAccuracy >= 3 && (
           <Animated.View
             entering={FadeInDown.duration(300)}
             style={{
@@ -1045,7 +927,7 @@ export default function QiblaScreen() {
               overflow: "hidden",
               borderWidth: 0.5,
               borderColor: isFacingQibla
-                ? "rgba(0,255,170,0.25)"
+                ? (C.isWhite ? "rgba(0,105,58,0.25)" : "rgba(0,255,170,0.25)")
                 : C.isWhite
                   ? "rgba(0,0,0,0.06)"
                   : "rgba(255,255,255,0.06)",
@@ -1053,10 +935,7 @@ export default function QiblaScreen() {
             facingStyle,
           ]}
         >
-          <BlurView
-            intensity={15}
-            tint={C.blurTint}
-            style={{
+          <View style={{
               paddingHorizontal: 22,
               paddingVertical: 9,
               backgroundColor: C.isWhite
@@ -1066,7 +945,7 @@ export default function QiblaScreen() {
           >
             {isFacingQibla && (
               <LinearGradient
-                colors={["rgba(0,255,170,0.1)", "transparent"]}
+                colors={[C.isWhite ? "rgba(0,105,58,0.08)" : "rgba(0,255,170,0.1)", "transparent"]}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
                 style={{
@@ -1083,9 +962,9 @@ export default function QiblaScreen() {
                 fontFamily: "Montserrat_600SemiBold",
                 fontSize: 12,
                 letterSpacing: 2,
-                color: isFacingQibla ? "#00FFAA" : C.textTertiary,
+                color: isFacingQibla ? accentColor : (C.isWhite ? "rgba(26,20,9,0.55)" : C.textTertiary),
                 textShadowColor: isFacingQibla
-                  ? "rgba(0,255,170,0.4)"
+                  ? (C.isWhite ? "rgba(0,105,58,0.3)" : "rgba(0,255,170,0.4)")
                   : "transparent",
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: isFacingQibla ? 8 : 0,
@@ -1093,13 +972,12 @@ export default function QiblaScreen() {
             >
               {isFacingQibla ? "✦ FACING QIBLA ✦" : "ALIGN TO QIBLA"}
             </Text>
-          </BlurView>
+          </View>
         </Animated.View>
       </Animated.View>
 
       {/* Compass */}
       <Animated.View
-        entering={FadeIn.delay(300).duration(800)}
         style={[
           { alignItems: "center", paddingHorizontal: 32 },
           compassFadeStyle,
@@ -1127,8 +1005,8 @@ export default function QiblaScreen() {
             overflow: "hidden",
             borderWidth: 1.5,
             borderColor: isFacingQibla
-              ? "rgba(0,255,170,0.25)"
-              : "rgba(212,175,55,0.1)",
+              ? (C.isWhite ? "rgba(0,105,58,0.30)" : "rgba(0,255,170,0.25)")
+              : (C.isWhite ? "rgba(139,105,20,0.15)" : "rgba(212,175,55,0.1)"),
             ...(C.isWhite ? getShadow(true, "elevated") : SHADOWS.glow(accentColor)),
           }}
         >
@@ -1141,7 +1019,7 @@ export default function QiblaScreen() {
                 right: 0,
                 bottom: 0,
                 borderRadius: COMPASS_SIZE / 2,
-                backgroundColor: "#00FFAA",
+                backgroundColor: C.isWhite ? "#00693A" : "#00FFAA",
               },
               qiblaGlowStyle,
             ]}
@@ -1164,7 +1042,6 @@ export default function QiblaScreen() {
 
       {/* Info below compass */}
       <Animated.View
-        entering={FadeInDown.delay(600).duration(500)}
         style={[
           { alignItems: "center", marginTop: 24, paddingHorizontal: 20 },
           bearingEntrance,
@@ -1198,7 +1075,7 @@ export default function QiblaScreen() {
           style={{
             fontFamily: "Montserrat_300Light",
             fontSize: 13,
-            color: C.textTertiary,
+            color: C.isWhite ? "rgba(26,20,9,0.55)" : C.textTertiary,
             marginTop: 4,
           }}
         >
@@ -1229,10 +1106,7 @@ export default function QiblaScreen() {
                 ...getShadow(C.isWhite, "soft"),
               }}
             >
-              <BlurView
-                intensity={15}
-                tint={C.blurTint}
-                style={{
+              <View style={{
                   padding: 18,
                   alignItems: "center",
                   backgroundColor: C.cardBg,
@@ -1298,20 +1172,18 @@ export default function QiblaScreen() {
                     textShadowRadius: C.isWhite ? 0 : 4,
                   }}
                 >
-                  {distance < 1000
-                    ? `${Math.round(distance)} km`
-                    : `${(distance / 1000).toFixed(1)}k km`}
+                  {`${Math.round(distance).toLocaleString()} km`}
                 </Text>
                 <Text
                   style={{
                     fontFamily: "Montserrat_300Light",
                     fontSize: 11,
-                    color: C.textMuted,
+                    color: C.isWhite ? "rgba(26,20,9,0.45)" : C.textMuted,
                   }}
                 >
                   to Makkah
                 </Text>
-              </BlurView>
+              </View>
             </View>
           </Animated.View>
 
@@ -1330,10 +1202,7 @@ export default function QiblaScreen() {
                 ...getShadow(C.isWhite, "soft"),
               }}
             >
-              <BlurView
-                intensity={15}
-                tint={C.blurTint}
-                style={{
+              <View style={{
                   padding: 18,
                   alignItems: "center",
                   backgroundColor: C.cardBg,
@@ -1412,12 +1281,12 @@ export default function QiblaScreen() {
                   style={{
                     fontFamily: "Montserrat_300Light",
                     fontSize: 11,
-                    color: C.textMuted,
+                    color: C.isWhite ? "rgba(26,20,9,0.45)" : C.textMuted,
                   }}
                 >
                   Your Heading
                 </Text>
-              </BlurView>
+              </View>
             </View>
           </Animated.View>
         </View>
@@ -1441,12 +1310,12 @@ export default function QiblaScreen() {
             style={{
               fontFamily: "Montserrat_300Light",
               fontSize: 10,
-              color: C.textFaint,
+              color: C.isWhite ? "rgba(26,20,9,0.25)" : C.textFaint,
               letterSpacing: 0.5,
             }}
           >
             {userLocation
-              ? `${userLocation.lat.toFixed(4)}°N, ${userLocation.lng.toFixed(4)}°${userLocation.lng >= 0 ? "E" : "W"} → ${KAABA_LAT}°N, ${KAABA_LNG}°E`
+              ? `${Math.abs(userLocation.lat).toFixed(4)}°${userLocation.lat >= 0 ? "N" : "S"}, ${Math.abs(userLocation.lng).toFixed(4)}°${userLocation.lng >= 0 ? "E" : "W"} → ${KAABA_LAT}°N, ${KAABA_LNG}°E`
               : ""}
           </Text>
         </Animated.View>
@@ -1455,22 +1324,20 @@ export default function QiblaScreen() {
   );
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.isWhite
-          ? "#F9F6F0"
-          : "rgba(5,5,16,0.55)",
-      }}
-    >
+    <LayoutAnimationConfig skipEntering={skipInitialEntering}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.isWhite
+            ? "#F9F6F0"
+            : "#050510",
+        }}
+      >
       <StatusBar style={C.statusBar} />
-
-      {/* White theme background */}
-      {C.isWhite && <WhiteBackgroundArt />}
 
       <ScrollView
         style={{ flex: 1, paddingTop: insets.top + 16 }}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
       >
         {locationStatus === "loading" && renderLoading()}
@@ -1478,6 +1345,7 @@ export default function QiblaScreen() {
         {locationStatus === "error" && renderError()}
         {locationStatus === "ready" && renderCompass()}
       </ScrollView>
-    </View>
+      </View>
+    </LayoutAnimationConfig>
   );
 }
