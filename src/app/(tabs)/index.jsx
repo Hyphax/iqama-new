@@ -368,6 +368,26 @@ export default function HomeScreen() {
                 Could not load prayer times.{"\n"}Pull down to retry.
               </Text>
             </View>
+          ) : !location ? (
+            <View
+              style={{
+                paddingHorizontal: 20,
+                marginBottom: 24,
+                alignItems: "center",
+                paddingVertical: 60,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "Montserrat_400Regular",
+                  fontSize: 14,
+                  color: isWhite ? "rgba(5,5,16,0.5)" : "rgba(255,255,255,0.5)",
+                  textAlign: "center",
+                }}
+              >
+                Location access is needed to show{"\n"}prayer times for your area.
+              </Text>
+            </View>
           ) : (
             <>
               <NextPrayerCard

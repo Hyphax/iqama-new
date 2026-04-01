@@ -4,6 +4,10 @@ import { dbUpdate, dbGetOne, IS_SUPABASE_READY } from "./supabaseClient";
 
 const SETTINGS_KEY = "iqama_app_settings";
 
+const VALID_METHODS = ["ISNA", "MWL", "Egypt", "Makkah", "Karachi"];
+const VALID_MADHABS = ["Hanafi", "Shafi"];
+const VALID_REMINDERS = [5, 10, 15, 30];
+
 const DEFAULT_SETTINGS = {
   calculationMethod: "ISNA",
   madhab: "Hanafi",
@@ -16,6 +20,25 @@ const DEFAULT_SETTINGS = {
   userName: "",
   userEmail: "",
 };
+
+function validateSetting(key, value) {
+  switch (key) {
+    case "calculationMethod":
+      return VALID_METHODS.includes(value) ? value : DEFAULT_SETTINGS.calculationMethod;
+    case "madhab":
+      return VALID_MADHABS.includes(value) ? value : DEFAULT_SETTINGS.madhab;
+    case "hijriAdjustment": {
+      const n = Number(value);
+      return Number.isInteger(n) && n >= -2 && n <= 2 ? n : DEFAULT_SETTINGS.hijriAdjustment;
+    }
+    case "reminderMinutes":
+      return VALID_REMINDERS.includes(Number(value)) ? Number(value) : DEFAULT_SETTINGS.reminderMinutes;
+    case "whiteTheme":
+      return typeof value === "boolean" ? value : DEFAULT_SETTINGS.whiteTheme;
+    default:
+      return value;
+  }
+}
 
 const SettingsContext = createContext(null);
 
@@ -107,8 +130,9 @@ export function SettingsProvider({ children, initialSettings, initialWhiteTheme 
   const pendingSettingsRef = useRef(null);
 
   const updateSetting = useCallback((key, value) => {
+    const validated = validateSetting(key, value);
     setSettingsState((prev) => {
-      const updated = { ...prev, [key]: value };
+      const updated = { ...prev, [key]: validated };
       pendingSettingsRef.current = updated;
       return updated;
     });
@@ -173,8 +197,9 @@ export function useSettings() {
   const pendingRef = useRef(null);
 
   const updateSetting = useCallback((key, value) => {
+    const validated = validateSetting(key, value);
     setSettingsState((prev) => {
-      const updated = { ...prev, [key]: value };
+      const updated = { ...prev, [key]: validated };
       pendingRef.current = updated;
       return updated;
     });

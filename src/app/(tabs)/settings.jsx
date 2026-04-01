@@ -31,7 +31,6 @@ import {
   Flame,
   Calculator,
   Moon,
-  Sun,
 } from "lucide-react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
@@ -253,6 +252,10 @@ function ToggleRow({
         borderBottomWidth: 0.5,
         borderBottomColor: C.rowBorder,
       }}
+      accessible={true}
+      accessibilityRole="switch"
+      accessibilityLabel={`${title}, ${value ? "on" : "off"}`}
+      accessibilityState={{ checked: value }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         {Icon && (

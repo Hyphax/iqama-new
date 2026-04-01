@@ -135,13 +135,18 @@ async function dbFetchByCode(code) {
  */
 export async function syncMyData({ code, displayName, prayers, streak }) {
   if (!code || !displayName) return false;
-  return dbUpsert({
-    user_code:    code,
-    display_name: displayName,
-    prayers:      prayers  ?? {},
-    streak:       streak   ?? 0,
-    updated_at:   new Date().toISOString(),
-  });
+  try {
+    return await dbUpsert({
+      user_code:    code,
+      display_name: displayName,
+      prayers:      prayers  ?? {},
+      streak:       streak   ?? 0,
+      updated_at:   new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn("[Squad] syncMyData failed:", e?.message);
+    return false;
+  }
 }
 
 /**
@@ -228,15 +233,22 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
     }
     if (isMounted.current) setSyncing(true);
 
-    const settled = await Promise.allSettled(codes.map(dbFetchByCode));
-    const friends = settled
-      .filter((r) => r.status === "fulfilled" && r.value != null)
-      .map(({ value }) => rowToFriend(value));
+    try {
+      const settled = await Promise.allSettled(codes.map(dbFetchByCode));
+      const friends = settled
+        .filter((r) => r.status === "fulfilled" && r.value != null)
+        .map(({ value }) => rowToFriend(value));
 
-    if (isMounted.current) {
-      setSquadData(friends);
-      setSyncing(false);
-      setLoading(false);
+      if (isMounted.current) {
+        setSquadData(friends);
+      }
+    } catch (e) {
+      console.warn("[Squad] fetchAllFriends failed:", e?.message);
+    } finally {
+      if (isMounted.current) {
+        setSyncing(false);
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -259,29 +271,34 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
    * @returns {Promise<{success:true,name:string}|{error:string}>}
    */
   const addFriend = useCallback(async (rawCode) => {
-    const code = rawCode.trim().toUpperCase();
+    try {
+      const code = rawCode.trim().toUpperCase();
 
-    if (!code || code.length < 4) {
-      return { error: "Code bahut chhota hai!" };
-    }
-    if (code === myCode) {
-      return { error: "Yeh aapka apna code hai 😄" };
-    }
-    if (friendCodes && friendCodes.includes(code)) {
-      return { error: "Yeh dost pehle se squad mein hai!" };
-    }
+      if (!code || code.length < 4) {
+        return { error: "Code bahut chhota hai!" };
+      }
+      if (code === myCode) {
+        return { error: "Yeh aapka apna code hai" };
+      }
+      if (friendCodes && friendCodes.includes(code)) {
+        return { error: "Yeh dost pehle se squad mein hai!" };
+      }
 
-    const { valid, name } = await validateFriendCode(code);
-    if (!valid) {
-      return { error: "Code nahi mila. Dost se sahi code maango." };
+      const { valid, name } = await validateFriendCode(code);
+      if (!valid) {
+        return { error: "Code nahi mila. Dost se sahi code maango." };
+      }
+
+      const updated = [...(friendCodes ?? []), code];
+      if (isMounted.current) setFriendCodes(updated);
+      await AsyncStorage.setItem(FRIEND_CODES_KEY, JSON.stringify(updated));
+      await fetchAllFriends(updated);
+
+      return { success: true, name };
+    } catch (e) {
+      console.warn("[Squad] addFriend failed:", e?.message);
+      return { error: "Friend add karne mein masla hua. Dobara koshish karein." };
     }
-
-    const updated = [...(friendCodes ?? []), code];
-    if (isMounted.current) setFriendCodes(updated);
-    await AsyncStorage.setItem(FRIEND_CODES_KEY, JSON.stringify(updated));
-    await fetchAllFriends(updated);
-
-    return { success: true, name };
   }, [myCode, friendCodes, fetchAllFriends]);
 
   // ── removeFriend ───────────────────────────────────────────────────────────

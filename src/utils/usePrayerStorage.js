@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { dbInsert, dbUpdate, IS_SUPABASE_READY } from "./supabaseClient";
+import { enqueueSync } from "./syncQueue";
 
 const STORAGE_KEYS = {
   COMPLETED_PREFIX: "iqama_completed_",
@@ -33,6 +34,7 @@ async function syncPrayerToSupabase(dateStr, prayers) {
     }, { upsert: true, returnRow: false });
   } catch (e) {
     console.warn("[PrayerStorage] Supabase sync error:", e?.message);
+    await enqueueSync("prayer_sync", { dateStr, prayers });
   }
 }
 
@@ -48,6 +50,7 @@ async function syncStreakToSupabase(currentStreak, bestStreak) {
     });
   } catch (e) {
     console.warn("[PrayerStorage] Streak sync error:", e?.message);
+    await enqueueSync("streak_sync", { currentStreak, bestStreak });
   }
 }
 
@@ -74,18 +77,32 @@ async function calculateStreak() {
     let bestStreak = 0;
     const streakDays = [];
 
-    // Helper to check if a day is completed (at least 3 prayers)
-    const isDayCompleted = async (date) => {
-      const key = `${STORAGE_KEYS.COMPLETED_PREFIX}${getDateKey(date)}`;
-      const stored = await AsyncStorage.getItem(key);
-      if (!stored) return false;
-      const completed = JSON.parse(stored);
-      const count = Object.keys(completed).filter((k) => completed[k] === true).length;
-      return count >= 3;
-    };
+    // Batch-fetch all needed keys in a single AsyncStorage call.
+    // We need up to 90 days back (for best streak), which also covers
+    // the 30-day current streak window and the 7-day dots window.
+    const keysToFetch = [];
+    for (let i = 0; i < 90; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      keysToFetch.push(`${STORAGE_KEYS.COMPLETED_PREFIX}${getDateKey(checkDate)}`);
+    }
 
-    // Check today first
-    const todayCompleted = await isDayCompleted(today);
+    const results = await AsyncStorage.multiGet(keysToFetch);
+
+    // Build a map of dayIndex -> completed boolean (at least 3 prayers)
+    const dayCompleted = new Map();
+    results.forEach(([, value], index) => {
+      if (!value) {
+        dayCompleted.set(index, false);
+        return;
+      }
+      const completed = JSON.parse(value);
+      const count = Object.keys(completed).filter((k) => completed[k] === true).length;
+      dayCompleted.set(index, count >= 3);
+    });
+
+    // Check today first (index 0)
+    const todayCompleted = dayCompleted.get(0);
 
     // If today is not yet completed, start counting streak from yesterday
     // (user may not have finished today's prayers yet)
@@ -93,31 +110,22 @@ async function calculateStreak() {
 
     // Calculate current streak
     for (let i = streakStartOffset; i < 30; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - i);
-      const completed = await isDayCompleted(checkDate);
-      if (completed) {
+      if (dayCompleted.get(i)) {
         currentStreak++;
       } else {
         break; // Streak broken
       }
     }
 
-    // Build last 7 days for streak dots display
+    // Build last 7 days for streak dots display (indices 6..0)
     for (let i = 6; i >= 0; i--) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - i);
-      const completed = await isDayCompleted(checkDate);
-      streakDays.push(completed);
+      streakDays.push(dayCompleted.get(i));
     }
 
     // Calculate best streak from last 90 days
     let tempStreak = 0;
     for (let i = 0; i < 90; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - i);
-      const completed = await isDayCompleted(checkDate);
-      if (completed) {
+      if (dayCompleted.get(i)) {
         tempStreak++;
         bestStreak = Math.max(bestStreak, tempStreak);
       } else {

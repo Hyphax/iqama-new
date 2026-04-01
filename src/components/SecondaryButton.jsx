@@ -19,6 +19,8 @@ export default function SecondaryButton({ title, onPress, style, isWhite }) {
         ...(isWhite && WHITE_THEME.cardShadow),
       }, style]}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={title}
     >
       <Text style={{
         fontFamily: "Montserrat_600SemiBold", fontSize: 16,

@@ -1,7 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Modal, View } from 'react-native';
-import { create } from 'zustand';
-import { useCallback, useMemo } from 'react';
 import { AuthWebView } from './AuthWebView';
 import { useAuthStore, useAuthModal } from './store';
 

@@ -15,6 +15,8 @@ export default function GoldGradientButton({ title, onPress, icon: Icon, style, 
         style,
       ]}
       activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={title}
     >
       <LinearGradient
         colors={

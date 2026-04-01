@@ -214,7 +214,10 @@ const PrayerRow = memo(function PrayerRow({ prayer, index, onToggleComplete, isW
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={isLocked ? 1 : 0.85}
-        style={{ marginBottom: 8 }}
+        style={{ marginBottom: 8, minHeight: 48 }}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: prayer.completed }}
+        accessibilityLabel={`${prayer.name} at ${prayer.time}, ${prayer.completed ? "completed" : prayer.isMissed ? "missed" : prayer.isCurrent ? "current prayer, tap to mark as prayed" : "upcoming"}`}
       >
         <View
           style={{
