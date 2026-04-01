@@ -43,7 +43,7 @@ const SlidingIndicator = memo(function SlidingIndicator({ activeIndex, barWidth,
 
   const breath = useSharedValue(0);
   // We use previous active to calculate velocity for stretching
-  const prevIndex = useSharedValue(activeIndex.value);
+  const prevIndex = useSharedValue(0);
 
   useAnimatedReaction(
     () => Math.round(activeIndex.value),

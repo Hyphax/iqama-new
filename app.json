@@ -2,6 +2,7 @@
   "expo": {
     "name": "Iqama",
     "slug": "iqama",
+    "scheme": "iqama",
     "version": "1.0.0",
     "description": "Iqama is an Islamic prayer times app that provides accurate prayer schedules, Qibla direction, and customizable notifications to help Muslims stay connected with their daily prayers.",
     "privacyUrl": "https://iqama.app/privacy",
