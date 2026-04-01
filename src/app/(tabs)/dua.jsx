@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity,
   RefreshControl, Share as RNShare, Dimensions,
@@ -7,11 +7,11 @@ import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Heart, Share2, Copy, BookOpen, Sparkles, Star } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import Animated, {
   FadeInDown, FadeIn, FadeInLeft, FadeInUp,
+  LayoutAnimationConfig,
   useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming, withDelay, withSpring,
   Easing,
@@ -19,7 +19,7 @@ import Animated, {
 import { getShadow } from "@/utils/iqamaTheme";
 import { useThemeColors } from "@/utils/useThemeColors";
 import { ShimmerSweep } from "@/components/ShimmerSweep";
-import { WhiteBackgroundArt } from "@/components/HomeScreen/WhiteBackgroundArt";
+import { useSkipInitialEntering } from "@/utils/useSkipInitialEntering";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -27,37 +27,71 @@ const DAY_DUAS = {
   Sunday: [
     { title: "Protection", arabic: "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ", transliteration: "Bismillahil-ladhi la yadurru ma'asmihi shai'un fil-ardi wa la fis-sama'i wa huwas-Sami'ul-'Alim", translation: "In the name of Allah, with whose name nothing can harm on earth or in heaven.", reference: "Abu Dawud 5088" },
     { title: "Morning Blessing", arabic: "اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ", transliteration: "Allahumma bika asbahna wa bika amsayna wa bika nahya wa bika namutu wa ilaykan-nushur", translation: "O Allah, by You we enter the morning, by You we enter the evening, by You we live, by You we die.", reference: "Tirmidhi 3391" },
+    { title: "Trust in Allah", arabic: "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ وَأَعُوذُ بِكَ مِنَ الْعَجْزِ وَالْكَسَلِ", transliteration: "Allahumma inni a'udhu bika minal-hammi wal-hazan, wa a'udhu bika minal-'ajzi wal-kasal", translation: "O Allah, I seek refuge in You from worry and grief, and I seek refuge in You from inability and laziness.", reference: "Bukhari 6369" },
+    { title: "Guidance", arabic: "اللَّهُمَّ اهْدِنِي وَسَدِّدْنِي", transliteration: "Allahummah-dini wa saddidni", translation: "O Allah, guide me and keep me on the right path.", reference: "Muslim 2725" },
+    { title: "Wellbeing", arabic: "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ", transliteration: "Allahumma inni as'alukal-'afiyata fid-dunya wal-akhirah", translation: "O Allah, I ask You for wellbeing in this world and the Hereafter.", reference: "Ibn Majah 3871" },
   ],
   Monday: [
     { title: "Forgiveness", arabic: "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ الَّذِي لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ وَأَتُوبُ إِلَيْهِ", transliteration: "Astaghfirullaha al-'Azeem alladhi la ilaha illa Huwal-Hayyul-Qayyum wa atubu ilayh", translation: "I seek forgiveness from Allah the Almighty, the Ever-Living, the Self-Sustaining, and I repent to Him.", reference: "Abu Dawud 1517" },
+    { title: "Good Character", arabic: "اللَّهُمَّ اهْدِنِي لِأَحْسَنِ الْأَخْلَاقِ لَا يَهْدِي لِأَحْسَنِهَا إِلَّا أَنْتَ", transliteration: "Allahummah-dini li ahsanil-akhlaq, la yahdi li ahsaniha illa Anta", translation: "O Allah, guide me to the best of character. None can guide to the best of it except You.", reference: "Muslim 771" },
+    { title: "Beneficial Knowledge", arabic: "اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا وَرِزْقًا طَيِّبًا وَعَمَلًا مُتَقَبَّلًا", transliteration: "Allahumma inni as'aluka 'ilman nafi'an, wa rizqan tayyiban, wa 'amalan mutaqabbalan", translation: "O Allah, I ask You for beneficial knowledge, good provision, and accepted deeds.", reference: "Ibn Majah 925" },
+    { title: "Steadfastness", arabic: "يَا مُقَلِّبَ الْقُلُوبِ ثَبِّتْ قَلْبِي عَلَى دِينِكَ", transliteration: "Ya Muqallibal-qulub, thabbit qalbi 'ala dinik", translation: "O Turner of hearts, keep my heart firm upon Your religion.", reference: "Tirmidhi 2140" },
+    { title: "Contentment", arabic: "اللَّهُمَّ قَنِّعْنِي بِمَا رَزَقْتَنِي وَبَارِكْ لِي فِيهِ", transliteration: "Allahumma qanni'ni bima razaqtani wa barik li fih", translation: "O Allah, make me content with what You have provided me and bless me in it.", reference: "Al-Hakim 1/530" },
   ],
   Tuesday: [
     { title: "Strength", arabic: "حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ", transliteration: "Hasbi-yAllahu la ilaha illa Huwa 'alayhi tawakkaltu wa Huwa Rabbul-'Arshil-'Azeem", translation: "Allah is sufficient for me. There is no deity except Him. Upon Him I rely.", reference: "Quran 9:129" },
     { title: "Knowledge", arabic: "رَبِّ زِدْنِي عِلْمًا", transliteration: "Rabbi zidni 'ilma", translation: "My Lord, increase me in knowledge.", reference: "Quran 20:114" },
+    { title: "Patience", arabic: "رَبَّنَا أَفْرِغْ عَلَيْنَا صَبْرًا وَثَبِّتْ أَقْدَامَنَا وَانْصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ", transliteration: "Rabbana afrigh 'alayna sabran wa thabbit aqdamana wansurna 'alal-qawmil-kafirin", translation: "Our Lord, pour upon us patience, make our feet firm, and give us victory.", reference: "Quran 2:250" },
+    { title: "Relief", arabic: "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ", transliteration: "La ilaha illa Anta, Subhanaka inni kuntu minaz-zalimin", translation: "There is no deity except You. Glory be to You. Indeed, I have been of the wrongdoers.", reference: "Quran 21:87" },
+    { title: "Success", arabic: "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي", transliteration: "Rabbish-rahli sadri wa yassirli amri", translation: "My Lord, expand my chest for me and ease my task for me.", reference: "Quran 20:25-26" },
   ],
   Wednesday: [
     { title: "Acceptance", arabic: "رَبَّنَا تَقَبَّلْ مِنَّا إِنَّكَ أَنْتَ السَّمِيعُ الْعَلِيمُ", transliteration: "Rabbana taqabbal minna innaka antas-Sami'ul-'Alim", translation: "Our Lord, accept from us. Indeed, You are the All-Hearing, All-Knowing.", reference: "Quran 2:127" },
     { title: "Sayyidul Istighfar", arabic: "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ خَلَقْتَنِي وَأَنَا عَبْدُكَ", transliteration: "Allahumma anta Rabbi la ilaha illa anta, khalaqtani wa ana 'abduka...", translation: "O Allah, You are my Lord, there is no deity except You. You created me and I am Your servant.", reference: "Bukhari 6306" },
+    { title: "Mercy", arabic: "رَبَّنَا ظَلَمْنَا أَنْفُسَنَا وَإِنْ لَمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ", transliteration: "Rabbana zalamna anfusana wa in lam taghfir lana wa tarhamna lanakunnanna minal-khasirin", translation: "Our Lord, we have wronged ourselves. If You do not forgive us and have mercy upon us, we will surely be among the losers.", reference: "Quran 7:23" },
+    { title: "Provision", arabic: "اللَّهُمَّ اكْفِنِي بِحَلَالِكَ عَنْ حَرَامِكَ وَأَغْنِنِي بِفَضْلِكَ عَمَّنْ سِوَاكَ", transliteration: "Allahummak-fini bi halalika 'an haramika wa aghnini bi fadlika 'amman siwak", translation: "O Allah, suffice me with what You have made lawful over what You have made unlawful, and enrich me by Your grace over all others.", reference: "Tirmidhi 3563" },
+    { title: "Light", arabic: "اللَّهُمَّ اجْعَلْ فِي قَلْبِي نُورًا وَفِي بَصَرِي نُورًا وَفِي سَمْعِي نُورًا", transliteration: "Allahummaj-'al fi qalbi nuran, wa fi basari nuran, wa fi sam'i nuran", translation: "O Allah, place light in my heart, light in my sight, and light in my hearing.", reference: "Bukhari 6316" },
   ],
   Thursday: [
     { title: "Glorification", arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ سُبْحَانَ اللَّهِ الْعَظِيمِ", transliteration: "SubhanAllahi wa bihamdihi, SubhanAllahil-'Azeem", translation: "Glory be to Allah and His is the praise. Glory be to Allah the Almighty.", reference: "Bukhari 6682" },
+    { title: "Tawakkul", arabic: "تَوَكَّلْتُ عَلَى اللَّهِ لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ", transliteration: "Tawakkaltu 'alAllah, la hawla wa la quwwata illa billah", translation: "I put my trust in Allah. There is no power and no strength except with Allah.", reference: "Abu Dawud 5095" },
+    { title: "Family", arabic: "رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا", transliteration: "Rabbana hab lana min azwajina wa dhurriyyatina qurrata a'yunin waj'alna lil-muttaqina imama", translation: "Our Lord, grant us from our spouses and offspring comfort to our eyes, and make us leaders for the righteous.", reference: "Quran 25:74" },
+    { title: "Ease", arabic: "اللَّهُمَّ لَا سَهْلَ إِلَّا مَا جَعَلْتَهُ سَهْلًا وَأَنْتَ تَجْعَلُ الْحَزْنَ إِذَا شِئْتَ سَهْلًا", transliteration: "Allahumma la sahla illa ma ja'altahu sahla, wa Anta taj'alul-hazna idha shi'ta sahla", translation: "O Allah, nothing is easy except what You make easy, and You can make difficulty easy if You wish.", reference: "Ibn Hibban 974" },
+    { title: "Remembrance", arabic: "اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ", transliteration: "Allahumma a'inni 'ala dhikrika wa shukrika wa husni 'ibadatik", translation: "O Allah, help me to remember You, thank You, and worship You in the best way.", reference: "Abu Dawud 1522" },
   ],
   Friday: [
     { title: "Salawat", arabic: "اللَّهُمَّ صَلِّ عَلَى سَيِّدِنَا مُحَمَّدٍ وَعَلَى آلِ سَيِّدِنَا مُحَمَّدٍ", transliteration: "Allahumma salli 'ala sayyidina Muhammad wa 'ala ali sayyidina Muhammad...", translation: "O Allah, send blessings upon our master Muhammad and his family.", reference: "Bukhari 3370" },
     { title: "Best Dua", arabic: "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ", transliteration: "Rabbana atina fid-dunya hasanatan wa fil-akhirati hasanatan wa qina 'adhaban-nar", translation: "Our Lord, give us good in this world and good in the Hereafter, and protect us from the Fire.", reference: "Quran 2:201" },
+    { title: "Forgiveness for All", arabic: "رَبَّنَا اغْفِرْ لِي وَلِوَالِدَيَّ وَلِلْمُؤْمِنِينَ يَوْمَ يَقُومُ الْحِسَابُ", transliteration: "Rabbanagh-fir li wa li walidayya wa lil-mu'minina yawma yaqumul-hisab", translation: "Our Lord, forgive me and my parents and the believers on the Day the account is established.", reference: "Quran 14:41" },
+    { title: "Jannah", arabic: "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْجَنَّةَ وَأَعُوذُ بِكَ مِنَ النَّارِ", transliteration: "Allahumma inni as'alukal-Jannata wa a'udhu bika minan-Nar", translation: "O Allah, I ask You for Paradise and I seek refuge in You from the Fire.", reference: "Abu Dawud 5079" },
+    { title: "Surah Al-Kahf", arabic: "اللَّهُمَّ اجْعَلْ لِي نُورًا فِي قَلْبِي وَنُورًا فِي قَبْرِي وَنُورًا بَيْنَ يَدَيَّ وَنُورًا مِنْ خَلْفِي", transliteration: "Allahummaj-'al li nuran fi qalbi, wa nuran fi qabri, wa nuran bayna yadayya, wa nuran min khalfi", translation: "O Allah, place light in my heart, light in my grave, light before me, and light behind me.", reference: "Muslim 763" },
   ],
   Saturday: [
     { title: "Gratitude", arabic: "الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ", transliteration: "Alhamdu lillahil-ladhi ahyana ba'da ma amatana wa ilayhin-nushur", translation: "All praise is for Allah Who gave us life after causing us to die.", reference: "Bukhari 6312" },
+    { title: "Refuge", arabic: "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنْ عِلْمٍ لَا يَنْفَعُ وَمِنْ قَلْبٍ لَا يَخْشَعُ وَمِنْ نَفْسٍ لَا تَشْبَعُ وَمِنْ دَعْوَةٍ لَا يُسْتَجَابُ لَهَا", transliteration: "Allahumma inni a'udhu bika min 'ilmin la yanfa', wa min qalbin la yakhsha', wa min nafsin la tashba', wa min da'watin la yustajabu laha", translation: "O Allah, I seek refuge in You from knowledge that does not benefit, a heart that does not humble, a soul that is not satisfied, and a supplication that is not answered.", reference: "Muslim 2722" },
+    { title: "Health", arabic: "اللَّهُمَّ عَافِنِي فِي بَدَنِي اللَّهُمَّ عَافِنِي فِي سَمْعِي اللَّهُمَّ عَافِنِي فِي بَصَرِي", transliteration: "Allahumma 'afini fi badani, Allahumma 'afini fi sam'i, Allahumma 'afini fi basari", translation: "O Allah, grant me health in my body. O Allah, grant me health in my hearing. O Allah, grant me health in my sight.", reference: "Abu Dawud 5090" },
+    { title: "Evening Peace", arabic: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ", transliteration: "Amsayna wa amsal-mulku lillah, wal-hamdu lillah, la ilaha illAllahu wahdahu la sharika lah", translation: "We have reached the evening and all dominion belongs to Allah. Praise is for Allah. None has the right to be worshipped except Allah alone, with no partner.", reference: "Abu Dawud 5071" },
+    { title: "Barakah", arabic: "اللَّهُمَّ بَارِكْ لَنَا فِي مَا رَزَقْتَنَا وَقِنَا عَذَابَ النَّارِ بِسْمِ اللَّهِ", transliteration: "Allahumma barik lana fi ma razaqtana wa qina 'adhaban-nar, Bismillah", translation: "O Allah, bless us in what You have provided for us and protect us from the punishment of the Fire.", reference: "Ibn As-Sunni 459" },
   ],
 };
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const DUA_ACCENTS = {
-  Protection: "#6C8EF5", "Morning Blessing": "#F5C842", Forgiveness: "#C9A0DC",
-  Strength: "#FF9A5C", Knowledge: "#D4AF37", Acceptance: "#00FFAA",
-  "Sayyidul Istighfar": "#D4AF37", Glorification: "#FF6B8A",
-  Salawat: "#D4AF37", "Best Dua": "#D4AF37", Gratitude: "#FF9A5C",
+  Protection: "#6C8EF5", "Morning Blessing": "#F5C842", "Trust in Allah": "#8B5CF6",
+  Guidance: "#00BFFF", Wellbeing: "#34D399", Forgiveness: "#C9A0DC",
+  "Good Character": "#F472B6", "Beneficial Knowledge": "#FBBF24",
+  Steadfastness: "#60A5FA", Contentment: "#A78BFA",
+  Strength: "#FF9A5C", Knowledge: "#D4AF37", Patience: "#38BDF8",
+  Relief: "#818CF8", Success: "#FB923C",
+  Acceptance: "#00FFAA", "Sayyidul Istighfar": "#D4AF37", Mercy: "#F87171",
+  Provision: "#4ADE80", Light: "#FACC15",
+  Glorification: "#FF6B8A", Tawakkul: "#7DD3FC", Family: "#F9A8D4",
+  Ease: "#86EFAC", Remembrance: "#C084FC",
+  Salawat: "#D4AF37", "Best Dua": "#D4AF37", "Forgiveness for All": "#A5B4FC",
+  Jannah: "#34D399", "Surah Al-Kahf": "#FCD34D",
+  Gratitude: "#FF9A5C", Refuge: "#818CF8", Health: "#4ADE80",
+  "Evening Peace": "#93C5FD", Barakah: "#D4AF37",
 };
 
 // useThemeColors and ShimmerSweep are now imported from shared modules
@@ -67,7 +101,7 @@ function HeartBurst({ active }) {
   if (!active) return null;
   return (
     <View style={{ position: "absolute", top: -5, left: -5 }}>
-      {[0, 1, 2, 3, 4].map((i) => (
+      {[0, 1, 2].map((i) => (
         <HeartParticle key={i} index={i} />
       ))}
     </View>
@@ -116,7 +150,7 @@ function DiamondAccent({ color, delay }) {
     opacity.value = withDelay(delay, withTiming(0.3, { duration: 600 }));
     rotate.value = withDelay(delay, withRepeat(
       withTiming(360, { duration: 20000, easing: Easing.linear }),
-    -1, false));
+      3, false));
   }, []);
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -148,7 +182,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
     glowOp.value = withDelay(400 + index * 100, withRepeat(withSequence(
       withTiming(0.15, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
       withTiming(0.02, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
-    ), -1, true));
+    ), 3, true));
     arabicOpacity.value = withDelay(500 + index * 150, withTiming(1, { duration: 800 }));
     arabicTranslateY.value = withDelay(500 + index * 150, withSpring(0, { damping: 14, stiffness: 90 }));
     translationOpacity.value = withDelay(800 + index * 150, withTiming(1, { duration: 600 }));
@@ -173,7 +207,6 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(200 + index * 120).duration(600).springify()}
       style={[{ paddingHorizontal: 20, marginBottom: 18 }, cardEntrance]}
     >
       <Animated.View style={scaleStyle}>
@@ -182,7 +215,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
           borderWidth: 0.5, borderColor: C.isWhite ? `${accent}20` : `${accent}15`,
           ...getShadow(C.isWhite, "card"),
         }}>
-          <BlurView intensity={C.isWhite ? 40 : 20} tint={C.blurTint} style={{
+          <View style={{
             padding: 24, backgroundColor: C.cardBg,
           }}>
             {!C.isWhite && <ShimmerSweep color={accent} />}
@@ -262,7 +295,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
             <Animated.View style={translationStyle}>
               <Text style={{
                 fontFamily: "Montserrat_400Regular", fontSize: 13,
-                color: C.textTertiary, lineHeight: 22,
+                color: C.isWhite ? "rgba(26,20,9,0.60)" : C.textTertiary, lineHeight: 22,
                 fontStyle: "italic", marginBottom: 14,
               }}>
                 {dua.transliteration}
@@ -273,7 +306,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
             <Animated.View style={translationStyle}>
               <Text style={{
                 fontFamily: "Montserrat_300Light", fontSize: 14,
-                color: C.textSecondary, lineHeight: 24, marginBottom: 20,
+                color: C.isWhite ? "#1A1409" : C.textSecondary, lineHeight: 24, marginBottom: 20,
               }}>
                 {dua.translation}
               </Text>
@@ -293,7 +326,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
                 />
                 <Text style={{
                   fontFamily: "Montserrat_400Regular", fontSize: 11,
-                  color: C.textMuted,
+                  color: C.isWhite ? "rgba(26,20,9,0.45)" : C.textMuted,
                 }}>
                   {dua.reference}
                 </Text>
@@ -347,7 +380,7 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
                 </Text>
               </Animated.View>
             )}
-          </BlurView>
+          </View>
         </View>
       </Animated.View>
     </Animated.View>
@@ -357,10 +390,11 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
 export default function DuaScreen() {
   const insets = useSafeAreaInsets();
   const C = useThemeColors();
+  const skipInitialEntering = useSkipInitialEntering();
   const [liked, setLiked] = useState({});
   const [copied, setCopied] = useState(null);
   const todayName = DAY_NAMES[new Date().getDay()];
-  const todayDuas = DAY_DUAS[todayName] || [];
+  const todayDuas = useMemo(() => DAY_DUAS[todayName] || [], [todayName]);
   const [refreshing, setRefreshing] = useState(false);
 
   const headerLineWidth = useSharedValue(0);
@@ -396,24 +430,22 @@ export default function DuaScreen() {
   }, []);
 
   const handleShare = useCallback(async (dua) => {
-    try { await RNShare.share({ message: `"${dua.translation}"\n\n— ${dua.reference}\n\nvia Iqama` }); } catch {}
+    try { await RNShare.share({ message: `"${dua.translation}"\n\n— ${dua.reference}\n\nvia Iqama` }); } catch { }
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.isWhite ? "#F9F6F0" : "rgba(5,5,16,0.55)" }}>
-      <StatusBar style={C.statusBar} />
+    <LayoutAnimationConfig skipEntering={skipInitialEntering}>
+      <View style={{ flex: 1, backgroundColor: C.isWhite ? "#F9F6F0" : "#050510" }}>
+        <StatusBar style={C.statusBar} />
 
-      {/* White theme background */}
-      {C.isWhite && <WhiteBackgroundArt />}
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 130 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 400); }}
-          tintColor="#D4AF37" />}
-      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 160 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 400); }}
+            tintColor="#D4AF37" />}
+        >
         {/* Header */}
         <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 24, paddingBottom: 4 }}>
           {/* Subtle glow behind header */}
@@ -524,7 +556,8 @@ export default function DuaScreen() {
             ✦ BARAKALLAHU FEEKUM ✦
           </Text>
         </Animated.View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </LayoutAnimationConfig>
   );
 }

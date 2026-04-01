@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { View, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path, Circle, G, Ellipse } from "react-native-svg";
@@ -351,7 +351,7 @@ function WarmOrb({ top, left, size, color, animStyle }) {
 }
 
 /* ─── Main exported component ─── */
-export function WhiteBackgroundArt() {
+export const WhiteBackgroundArt = memo(function WhiteBackgroundArt() {
   // Fade in on mount
   const fadeIn = useSharedValue(0);
   // Subtle art breathing
@@ -631,4 +631,4 @@ export function WhiteBackgroundArt() {
       />
     </Animated.View>
   );
-}
+});

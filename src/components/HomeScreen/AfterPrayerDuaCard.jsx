@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { View, Text } from "react-native";
 import { BookOpen, Sparkles } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -51,22 +51,30 @@ const CONTENT = {
   },
 };
 
-export function AfterPrayerDuaCard({ currentPrayerName, isWhite }) {
+export const AfterPrayerDuaCard = memo(function AfterPrayerDuaCard({
+  currentPrayerName,
+  isWhite,
+  animateOnMount = true,
+}) {
   const dua = CONTENT[currentPrayerName] || CONTENT.Dhuhr;
   const aura = PRAYER_AURA[currentPrayerName] || PRAYER_AURA.Dhuhr;
   const iconPulse = useSharedValue(1);
   const glowOpacity = useSharedValue(0.05);
-  const arabicOpacity = useSharedValue(0);
-  const arabicTranslateY = useSharedValue(10);
-  const translationOpacity = useSharedValue(0);
-  const cardScale = useSharedValue(0.95);
+  const arabicOpacity = useSharedValue(animateOnMount ? 0 : 1);
+  const arabicTranslateY = useSharedValue(animateOnMount ? 10 : 0);
+  const translationOpacity = useSharedValue(animateOnMount ? 0 : 1);
+  const cardScale = useSharedValue(animateOnMount ? 0.95 : 1);
   const sparkleRotate = useSharedValue(0);
 
   useEffect(() => {
-    cardScale.value = withDelay(
-      400,
-      withSpring(1, { damping: 14, stiffness: 80 }),
-    );
+    if (animateOnMount) {
+      cardScale.value = withDelay(
+        400,
+        withSpring(1, { damping: 14, stiffness: 80 }),
+      );
+    } else {
+      cardScale.value = 1;
+    }
     iconPulse.value = withRepeat(
       withSequence(
         withTiming(1.18, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
@@ -83,24 +91,28 @@ export function AfterPrayerDuaCard({ currentPrayerName, isWhite }) {
       -1,
       true,
     );
-    // Arabic text reveal
-    arabicOpacity.value = withDelay(600, withTiming(1, { duration: 800 }));
-    arabicTranslateY.value = withDelay(
-      600,
-      withSpring(0, { damping: 14, stiffness: 90 }),
-    );
-    // Translation reveal
-    translationOpacity.value = withDelay(
-      1000,
-      withTiming(1, { duration: 600 }),
-    );
+    if (animateOnMount) {
+      arabicOpacity.value = withDelay(600, withTiming(1, { duration: 800 }));
+      arabicTranslateY.value = withDelay(
+        600,
+        withSpring(0, { damping: 14, stiffness: 90 }),
+      );
+      translationOpacity.value = withDelay(
+        1000,
+        withTiming(1, { duration: 600 }),
+      );
+    } else {
+      arabicOpacity.value = 1;
+      arabicTranslateY.value = 0;
+      translationOpacity.value = 1;
+    }
     // Sparkle rotation
     sparkleRotate.value = withRepeat(
       withTiming(360, { duration: 8000, easing: Easing.linear }),
       -1,
       false,
     );
-  }, [currentPrayerName]);
+  }, [animateOnMount, currentPrayerName]);
 
   const iconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: iconPulse.value }],
@@ -122,7 +134,6 @@ export function AfterPrayerDuaCard({ currentPrayerName, isWhite }) {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(550).duration(600).springify().damping(14)}
       style={[{ paddingHorizontal: 20, marginBottom: 28 }, cardEntrance]}
     >
       <View
@@ -308,7 +319,7 @@ export function AfterPrayerDuaCard({ currentPrayerName, isWhite }) {
           </Animated.View>
 
           {/* Reference */}
-          <Animated.View entering={FadeIn.delay(1200).duration(400)}>
+          <Animated.View entering={animateOnMount ? FadeIn.delay(1200).duration(400) : undefined}>
             <Text
               style={{
                 fontFamily: "Montserrat_400Regular",
@@ -325,4 +336,4 @@ export function AfterPrayerDuaCard({ currentPrayerName, isWhite }) {
       </View>
     </Animated.View>
   );
-}
+});

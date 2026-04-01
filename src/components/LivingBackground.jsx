@@ -1,13 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { View, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path, Circle, G, Ellipse } from "react-native-svg";
 import Animated, {
   useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming, withDelay,
+  withTiming, withDelay,
   Easing,
 } from "react-native-reanimated";
-import { useSettings } from "@/utils/useSettings";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const SIN = Easing.inOut(Easing.sin);
@@ -45,14 +44,6 @@ function OrnateMinaret({ x, scale = 1, flip = false, delay = 0, isWhite }) {
 
   useEffect(() => {
     opac.value = withDelay(delay, withTiming(1, { duration: 2000, easing: CUBIC_OUT }));
-    ty.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(-10, { duration: 10000, easing: SIN }),
-      withTiming(10, { duration: 10000, easing: SIN }),
-    ), -1, true));
-    tx.value = withDelay(delay + 600, withRepeat(withSequence(
-      withTiming(4, { duration: 14000, easing: SIN }),
-      withTiming(-4, { duration: 14000, easing: SIN }),
-    ), -1, true));
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -202,10 +193,6 @@ function GrandMosque({ isWhite, delay = 0 }) {
 
   useEffect(() => {
     opac.value = withDelay(delay, withTiming(1, { duration: 3000, easing: CUBIC_OUT }));
-    ty.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(-5, { duration: 13000, easing: SIN }),
-      withTiming(5, { duration: 13000, easing: SIN }),
-    ), -1, true));
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -339,18 +326,7 @@ function CrescentMoon({ isWhite }) {
   const rot = useSharedValue(-5);
 
   useEffect(() => {
-    glow.value = withRepeat(withSequence(
-      withTiming(isWhite ? 0.65 : 0.5, { duration: 4500, easing: SIN }),
-      withTiming(0.2, { duration: 4500, easing: SIN }),
-    ), -1, true);
-    ty.value = withRepeat(withSequence(
-      withTiming(-7, { duration: 9000, easing: SIN }),
-      withTiming(7, { duration: 9000, easing: SIN }),
-    ), -1, true);
-    rot.value = withRepeat(withSequence(
-      withTiming(5, { duration: 11000, easing: SIN }),
-      withTiming(-5, { duration: 11000, easing: SIN }),
-    ), -1, true);
+    glow.value = withTiming(isWhite ? 0.55 : 0.4, { duration: 2500, easing: SIN });
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -395,14 +371,7 @@ function HangingLantern({ x, top, size = 1, delay = 0, isWhite }) {
 
   useEffect(() => {
     opac.value = withDelay(delay, withTiming(1, { duration: 2000 }));
-    swing.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(7, { duration: 3500, easing: SIN }),
-      withTiming(-7, { duration: 3500, easing: SIN }),
-    ), -1, true));
-    glowOp.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(0.65, { duration: 2200, easing: SIN }),
-      withTiming(0.15, { duration: 2200, easing: SIN }),
-    ), -1, true));
+    glowOp.value = withDelay(delay, withTiming(0.4, { duration: 2500 }));
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -476,14 +445,7 @@ function OrnateFloral({ x, bottom, flip = false, delay = 0, isWhite, size = 1 })
 
   useEffect(() => {
     opac.value = withDelay(delay, withTiming(1, { duration: 1800 }));
-    sway.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(5, { duration: 5000, easing: SIN }),
-      withTiming(-5, { duration: 5000, easing: SIN }),
-    ), -1, true));
-    bloom.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(1.08, { duration: 6000, easing: SIN }),
-      withTiming(0.93, { duration: 6000, easing: SIN }),
-    ), -1, true));
+    bloom.value = withDelay(delay, withTiming(1, { duration: 2000 }));
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -634,21 +596,7 @@ function FlyingBird({ startX, y, delay = 0, isWhite, size = 1 }) {
   const opac = useSharedValue(0);
 
   useEffect(() => {
-    opac.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(isWhite ? 0.18 : 0.12, { duration: 2500 }),
-      withTiming(isWhite ? 0.18 : 0.12, { duration: 18000 }),
-      withTiming(0, { duration: 2500 }),
-      withDelay(6000, withTiming(0, { duration: 0 })),
-    ), -1, false));
-    tx.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(SW + 60, { duration: 23000, easing: Easing.linear }),
-      withTiming(-60, { duration: 0 }),
-      withDelay(6000, withTiming(-60, { duration: 0 })),
-    ), -1, false));
-    ty.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(-18, { duration: 3500, easing: SIN }),
-      withTiming(18, { duration: 3500, easing: SIN }),
-    ), -1, true));
+    opac.value = withDelay(delay, withTiming(isWhite ? 0.18 : 0.12, { duration: 2000 }));
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -681,20 +629,8 @@ function GoldenStar({ top, left, size, delay }) {
   const ty = useSharedValue(0);
 
   useEffect(() => {
-    opac.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(0.85, { duration: 1800, easing: SIN }),
-      withTiming(0, { duration: 2800, easing: SIN }),
-    ), -1, true));
-    rot.value = withDelay(delay, withRepeat(
-      withTiming(360, { duration: 22000, easing: Easing.linear }), -1, false));
-    sc.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(1.3, { duration: 2200, easing: SIN }),
-      withTiming(0.35, { duration: 2200, easing: SIN }),
-    ), -1, true));
-    ty.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(-14, { duration: 8000, easing: SIN }),
-      withTiming(14, { duration: 8000, easing: SIN }),
-    ), -1, true));
+    opac.value = withDelay(delay, withTiming(0.7, { duration: 2000, easing: SIN }));
+    sc.value = withDelay(delay, withTiming(1, { duration: 2000 }));
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -720,10 +656,7 @@ function GoldenStar({ top, left, size, delay }) {
 function IslamicPattern({ isWhite }) {
   const opac = useSharedValue(0);
   useEffect(() => {
-    opac.value = withRepeat(withSequence(
-      withTiming(isWhite ? 0.09 : 0.03, { duration: 9000, easing: SIN }),
-      withTiming(isWhite ? 0.03 : 0.01, { duration: 9000, easing: SIN }),
-    ), -1, true);
+    opac.value = withTiming(isWhite ? 0.06 : 0.02, { duration: 3000, easing: SIN });
   }, []);
   const style = useAnimatedStyle(() => ({ opacity: opac.value }));
   const c = isWhite ? GOLD.rich : CYAN.solid;
@@ -763,18 +696,7 @@ function DustParticle({ top, left, size, delay, isWhite }) {
   const tx = useSharedValue(0);
 
   useEffect(() => {
-    opacity.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(isWhite ? 0.55 : 0.6, { duration: 2200 + Math.random() * 2000, easing: SIN }),
-      withTiming(0, { duration: 2200 + Math.random() * 2000, easing: SIN }),
-    ), -1, true));
-    ty.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(-20 - Math.random() * 22, { duration: 9000 + Math.random() * 4000, easing: SIN }),
-      withTiming(20 + Math.random() * 22, { duration: 9000 + Math.random() * 4000, easing: SIN }),
-    ), -1, true));
-    tx.value = withDelay(delay + 400, withRepeat(withSequence(
-      withTiming(12 + Math.random() * 12, { duration: 11000 + Math.random() * 5000, easing: SIN }),
-      withTiming(-12 - Math.random() * 12, { duration: 11000 + Math.random() * 5000, easing: SIN }),
-    ), -1, true));
+    opacity.value = withDelay(delay, withTiming(isWhite ? 0.4 : 0.45, { duration: 2500, easing: SIN }));
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -805,14 +727,7 @@ function LightBeam({ top, left, angle, w, h, delay, isWhite }) {
   const tx = useSharedValue(-50);
 
   useEffect(() => {
-    opacity.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(isWhite ? 0.16 : 0.06, { duration: 4500, easing: SIN }),
-      withTiming(0, { duration: 4500, easing: SIN }),
-    ), -1, true));
-    tx.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(50, { duration: 15000, easing: SIN }),
-      withTiming(-50, { duration: 15000, easing: SIN }),
-    ), -1, true));
+    opacity.value = withDelay(delay, withTiming(isWhite ? 0.12 : 0.04, { duration: 3000, easing: SIN }));
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -841,22 +756,8 @@ function AuraOrb({ top, left, size, color, delay }) {
   const ty = useSharedValue(0);
 
   useEffect(() => {
-    opacity.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(0.22, { duration: 7000, easing: SIN }),
-      withTiming(0.04, { duration: 7000, easing: SIN }),
-    ), -1, true));
-    scale.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(1.12, { duration: 9000, easing: SIN }),
-      withTiming(0.88, { duration: 9000, easing: SIN }),
-    ), -1, true));
-    tx.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(30, { duration: 15000, easing: SIN }),
-      withTiming(-30, { duration: 15000, easing: SIN }),
-    ), -1, true));
-    ty.value = withDelay(delay + 1200, withRepeat(withSequence(
-      withTiming(-22, { duration: 13000, easing: SIN }),
-      withTiming(22, { duration: 13000, easing: SIN }),
-    ), -1, true));
+    opacity.value = withDelay(delay, withTiming(0.14, { duration: 3000, easing: SIN }));
+    scale.value = withDelay(delay, withTiming(1, { duration: 3000 }));
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -886,11 +787,7 @@ function ShimmerSweep({ isWhite, reverse = false }) {
   const tx = useSharedValue(reverse ? SW * 2 : -SW);
 
   useEffect(() => {
-    if (!isWhite) return;
-    tx.value = withDelay(reverse ? 4000 : 1500, withRepeat(withSequence(
-      withTiming(reverse ? -SW : SW * 2, { duration: reverse ? 5000 : 3800, easing: Easing.inOut(Easing.ease) }),
-      withDelay(reverse ? 7000 : 5000, withTiming(reverse ? SW * 2 : -SW, { duration: 0 })),
-    ), -1, false));
+    // Static — no shimmer sweep animation
   }, [isWhite]);
 
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }] }));
@@ -917,10 +814,7 @@ function ShimmerSweep({ isWhite, reverse = false }) {
 function GoldenVignette() {
   const opac = useSharedValue(0);
   useEffect(() => {
-    opac.value = withRepeat(withSequence(
-      withTiming(0.35, { duration: 8000, easing: SIN }),
-      withTiming(0.15, { duration: 8000, easing: SIN }),
-    ), -1, true);
+    opac.value = withTiming(0.25, { duration: 3000, easing: SIN });
   }, []);
   const style = useAnimatedStyle(() => ({ opacity: opac.value }));
 
@@ -957,54 +851,23 @@ function GoldenVignette() {
    DATA — pre-computed positions
    ═══════════════════════════════════════════════════════ */
 const DUST = [
-  { top: SH*0.04, left: SW*0.12, size: 3, delay: 0 },
-  { top: SH*0.09, left: SW*0.78, size: 2.5, delay: 600 },
-  { top: SH*0.15, left: SW*0.45, size: 3.5, delay: 1200 },
-  { top: SH*0.21, left: SW*0.88, size: 2.5, delay: 1800 },
-  { top: SH*0.27, left: SW*0.22, size: 3, delay: 2400 },
-  { top: SH*0.33, left: SW*0.65, size: 2.5, delay: 3000 },
-  { top: SH*0.39, left: SW*0.08, size: 3, delay: 3600 },
-  { top: SH*0.45, left: SW*0.52, size: 3.5, delay: 4200 },
-  { top: SH*0.51, left: SW*0.82, size: 2.5, delay: 4800 },
-  { top: SH*0.57, left: SW*0.35, size: 3, delay: 5400 },
-  { top: SH*0.63, left: SW*0.72, size: 2.5, delay: 6000 },
-  { top: SH*0.69, left: SW*0.18, size: 3, delay: 6600 },
-  { top: SH*0.75, left: SW*0.58, size: 3.5, delay: 7200 },
-  { top: SH*0.81, left: SW*0.42, size: 2.5, delay: 7800 },
-  { top: SH*0.87, left: SW*0.75, size: 2.5, delay: 8400 },
-  { top: SH*0.12, left: SW*0.32, size: 2, delay: 800 },
-  { top: SH*0.36, left: SW*0.92, size: 2, delay: 2200 },
-  { top: SH*0.60, left: SW*0.05, size: 2, delay: 5000 },
-  { top: SH*0.93, left: SW*0.55, size: 2.5, delay: 9000 },
-  { top: SH*0.48, left: SW*0.28, size: 2, delay: 3400 },
+  { top: SH*0.12, left: SW*0.45, size: 3, delay: 0 },
+  { top: SH*0.45, left: SW*0.52, size: 3.5, delay: 3000 },
+  { top: SH*0.69, left: SW*0.18, size: 3, delay: 6000 },
+  { top: SH*0.88, left: SW*0.55, size: 2.5, delay: 9000 },
 ];
 
 const STARS = [
-  { top: SH*0.03, left: SW*0.2, size: 16, delay: 500 },
-  { top: SH*0.08, left: SW*0.72, size: 13, delay: 1800 },
-  { top: SH*0.14, left: SW*0.48, size: 18, delay: 3200 },
-  { top: SH*0.20, left: SW*0.86, size: 12, delay: 4500 },
-  { top: SH*0.26, left: SW*0.14, size: 15, delay: 2000 },
-  { top: SH*0.32, left: SW*0.62, size: 14, delay: 5800 },
-  { top: SH*0.38, left: SW*0.32, size: 17, delay: 1200 },
-  { top: SH*0.44, left: SW*0.88, size: 12, delay: 7000 },
-  { top: SH*0.50, left: SW*0.08, size: 16, delay: 3800 },
-  { top: SH*0.56, left: SW*0.76, size: 13, delay: 6200 },
-  { top: SH*0.62, left: SW*0.44, size: 18, delay: 800 },
-  { top: SH*0.68, left: SW*0.24, size: 14, delay: 4000 },
-  { top: SH*0.74, left: SW*0.66, size: 15, delay: 2800 },
-  { top: SH*0.80, left: SW*0.38, size: 12, delay: 5500 },
-  { top: SH*0.86, left: SW*0.82, size: 16, delay: 1500 },
-  { top: SH*0.92, left: SW*0.56, size: 13, delay: 6800 },
+  { top: SH*0.08, left: SW*0.72, size: 14, delay: 1800 },
+  { top: SH*0.44, left: SW*0.88, size: 16, delay: 5000 },
+  { top: SH*0.80, left: SW*0.38, size: 15, delay: 8000 },
 ];
 
 
 /* ═══════════════════════════════════════════════════════
    MAIN EXPORT — LivingBackground
    ═══════════════════════════════════════════════════════ */
-export function LivingBackground() {
-  const { settings } = useSettings();
-  const isWhite = settings.whiteTheme === true;
+export const LivingBackground = memo(function LivingBackground({ isWhite }) {
 
   return (
     <View style={{
@@ -1015,9 +878,7 @@ export function LivingBackground() {
       {!isWhite && (
         <>
           <AuraOrb top={-SW*0.4} left={-SW*0.2} size={SW*1.1} color="#D4AF37" delay={0} />
-          <AuraOrb top={SH*0.35} left={SW*0.4} size={SW*0.7} color="#B8860B" delay={2000} />
-          <AuraOrb top={SH*0.65} left={-SW*0.15} size={SW*0.8} color="#D4AF37" delay={4000} />
-          <AuraOrb top={SH*0.15} left={SW*0.6} size={SW*0.5} color="#D4AF37" delay={3000} />
+          <AuraOrb top={SH*0.5} left={SW*0.3} size={SW*0.8} color="#B8860B" delay={2000} />
         </>
       )}
 
@@ -1048,9 +909,7 @@ export function LivingBackground() {
             style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: SW*0.45 }}
           />
           <AuraOrb top={-SW*0.3} left={SW*0.05} size={SW*0.95} color="#D4AF37" delay={0} />
-          <AuraOrb top={SH*0.35} left={SW*0.45} size={SW*0.65} color="#C5A84D" delay={3000} />
-          <AuraOrb top={SH*0.65} left={-SW*0.1} size={SW*0.75} color="#B8960F" delay={5000} />
-          <AuraOrb top={SH*0.1} left={SW*0.7} size={SW*0.4} color="#D4AF37" delay={7000} />
+          <AuraOrb top={SH*0.5} left={SW*0.3} size={SW*0.7} color="#B8960F" delay={4000} />
         </>
       )}
 
@@ -1059,17 +918,7 @@ export function LivingBackground() {
 
       {/* ── Light Beams ── */}
       <LightBeam top={SH*0.03} left={SW*0.1} angle={25} w={SW*0.65} h={isWhite ? 3.5 : 2} delay={1000} isWhite={isWhite} />
-      <LightBeam top={SH*0.25} left={SW*0.3} angle={-15} w={SW*0.55} h={isWhite ? 3 : 1.5} delay={5000} isWhite={isWhite} />
       <LightBeam top={SH*0.50} left={SW*0.05} angle={20} w={SW*0.7} h={isWhite ? 3.5 : 2} delay={9000} isWhite={isWhite} />
-      <LightBeam top={SH*0.75} left={SW*0.2} angle={-12} w={SW*0.6} h={isWhite ? 3 : 1.5} delay={12000} isWhite={isWhite} />
-      {isWhite && (
-        <>
-          <LightBeam top={SH*0.12} left={SW*0.5} angle={-30} w={SW*0.55} h={2.5} delay={3000} isWhite />
-          <LightBeam top={SH*0.40} left={SW*0.15} angle={18} w={SW*0.6} h={3} delay={7000} isWhite />
-          <LightBeam top={SH*0.62} left={SW*0.4} angle={-22} w={SW*0.5} h={2.5} delay={10000} isWhite />
-          <LightBeam top={SH*0.85} left={SW*0.25} angle={15} w={SW*0.55} h={2} delay={13000} isWhite />
-        </>
-      )}
 
       {/* ── Crescent Moon ── */}
       <CrescentMoon isWhite={isWhite} />
@@ -1081,28 +930,12 @@ export function LivingBackground() {
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: isWhite ? 0.42 : 0.6 }}>
         <OrnateMinaret x={-14} scale={1.2} delay={100} isWhite={isWhite} />
         <OrnateMinaret x={SW - 82} scale={1.1} flip delay={400} isWhite={isWhite} />
-        {isWhite && (
-          <>
-            <OrnateMinaret x={SW*0.2} scale={0.58} delay={800} isWhite />
-            <OrnateMinaret x={SW*0.62} scale={0.52} flip delay={1200} isWhite />
-          </>
-        )}
       </View>
 
       {/* ── Ornate Florals ── */}
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: isWhite ? 0.38 : 0.5 }}>
         <OrnateFloral x={-12} bottom={0} delay={300} isWhite={isWhite} size={1.1} />
         <OrnateFloral x={-12} bottom={0} flip delay={700} isWhite={isWhite} size={1.05} />
-        <OrnateFloral x={-22} bottom={SH*0.15} delay={1100} isWhite={isWhite} size={0.8} />
-        <OrnateFloral x={-18} bottom={SH*0.12} flip delay={1500} isWhite={isWhite} size={0.75} />
-        {isWhite && (
-          <>
-            <OrnateFloral x={-12} bottom={SH*0.42} delay={1900} isWhite size={0.6} />
-            <OrnateFloral x={-8} bottom={SH*0.4} flip delay={2300} isWhite size={0.55} />
-            <OrnateFloral x={5} bottom={SH*0.62} delay={2700} isWhite size={0.48} />
-            <OrnateFloral x={0} bottom={SH*0.6} flip delay={3100} isWhite size={0.44} />
-          </>
-        )}
       </View>
 
       {/* ── Hanging Lanterns ── */}
@@ -1110,9 +943,6 @@ export function LivingBackground() {
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.32 }}>
           <HangingLantern x={SW*0.1} top={SH*0.02} size={1.15} delay={500} isWhite />
           <HangingLantern x={SW*0.84} top={SH*0.03} size={0.95} delay={1500} isWhite />
-          <HangingLantern x={SW*0.46} top={SH*0.01} size={1.05} delay={2500} isWhite />
-          <HangingLantern x={SW*0.26} top={SH*0.05} size={0.85} delay={3500} isWhite />
-          <HangingLantern x={SW*0.7} top={SH*0.025} size={1} delay={4500} isWhite />
         </View>
       )}
 
@@ -1121,8 +951,6 @@ export function LivingBackground() {
         <>
           <FlyingBird startX={-30} y={SH*0.11} delay={2000} isWhite size={1} />
           <FlyingBird startX={-50} y={SH*0.14} delay={3200} isWhite size={0.8} />
-          <FlyingBird startX={-20} y={SH*0.17} delay={9000} isWhite size={0.9} />
-          <FlyingBird startX={-40} y={SH*0.09} delay={15000} isWhite size={0.7} />
         </>
       )}
 
@@ -1132,9 +960,8 @@ export function LivingBackground() {
       {/* ── Golden Vignette ── */}
       {isWhite && <GoldenVignette />}
 
-      {/* ── Shimmer Sweeps ── */}
+      {/* ── Shimmer Sweep ── */}
       <ShimmerSweep isWhite={isWhite} />
-      <ShimmerSweep isWhite={isWhite} reverse />
 
       {/* ── Golden Stars ── */}
       {isWhite && STARS.map((s, i) => (
@@ -1147,4 +974,4 @@ export function LivingBackground() {
       ))}
     </View>
   );
-}
+});
