@@ -197,11 +197,17 @@ function DuaCard({ dua, index, accent, liked, onLike, onCopy, onShare, copied })
   const translationStyle = useAnimatedStyle(() => ({ opacity: translationOpacity.value }));
   const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressScale.value }] }));
 
+  const heartBurstTimerRef = useRef(null);
+  useEffect(() => {
+    return () => { if (heartBurstTimerRef.current) clearTimeout(heartBurstTimerRef.current); };
+  }, []);
+
   const handleLikePress = useCallback(() => {
     onLike();
     if (!liked) {
       setHeartBurst(true);
-      setTimeout(() => setHeartBurst(false), 700);
+      if (heartBurstTimerRef.current) clearTimeout(heartBurstTimerRef.current);
+      heartBurstTimerRef.current = setTimeout(() => setHeartBurst(false), 700);
     }
   }, [liked, onLike]);
 

@@ -10,7 +10,7 @@ import {
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ErrorBoundaryWrapper } from '../../__create/SharedErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface ParentSitemap {
   expoPages?: Array<{
@@ -445,8 +445,8 @@ let hasInitialized = false;
 
 export default () => {
   return (
-    <ErrorBoundaryWrapper>
+    <ErrorBoundary fallbackMessage="The page you're looking for doesn't exist.">
       <NotFoundScreen />
-    </ErrorBoundaryWrapper>
+    </ErrorBoundary>
   );
 };
