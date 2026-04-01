@@ -115,7 +115,7 @@ function HeartParticle({ index }) {
   const scale = useSharedValue(0);
 
   useEffect(() => {
-    const angle = (index / 5) * Math.PI * 2;
+    const angle = (index / 3) * Math.PI * 2;
     const dist = 12 + Math.random() * 8;
     opacity.value = withSequence(
       withTiming(0.9, { duration: 150 }),
@@ -430,7 +430,7 @@ export default function DuaScreen() {
   }, []);
 
   const handleShare = useCallback(async (dua) => {
-    try { await RNShare.share({ message: `"${dua.translation}"\n\n— ${dua.reference}\n\nvia Iqama` }); } catch { }
+    try { await RNShare.share({ message: `"${dua.translation}"\n\n— ${dua.reference}\n\nvia Iqama` }); } catch (e) { console.warn("Share failed:", e); }
   }, []);
 
   return (

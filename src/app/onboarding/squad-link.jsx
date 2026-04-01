@@ -622,7 +622,7 @@ export default function SquadLinkScreen() {
   // Persistent squad code — same code every time, never changes
   const [myCode, setMyCode] = useState(null);
   useEffect(() => {
-    getMySquadCode().then(setMyCode);
+    getMySquadCode().then(({ code }) => setMyCode(code));
   }, []);
 
   // Formatted display: "ABC123" → "ABC 123"

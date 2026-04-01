@@ -12,13 +12,23 @@ Notifications.setNotificationHandler({
 
 /**
  * Parse a 12h time string like "5:30 AM" into a Date object for today.
+ * Throws if the format is invalid.
  */
 function parseTimeToDate(timeStr) {
-  const [time, period] = timeStr.split(" ");
+  if (typeof timeStr !== "string" || !/^\d{1,2}:\d{2}\s?(AM|PM)$/i.test(timeStr.trim())) {
+    throw new Error(`Invalid time string: "${timeStr}". Expected format "H:MM AM/PM".`);
+  }
+
+  const [time, period] = timeStr.trim().split(" ");
   const [rawH, rawM] = time.split(":").map(Number);
+
+  if (rawH < 1 || rawH > 12 || rawM < 0 || rawM > 59) {
+    throw new Error(`Invalid time values in "${timeStr}". Hours must be 1-12, minutes 0-59.`);
+  }
+
   let hours = rawH;
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
+  if (period.toUpperCase() === "PM" && hours !== 12) hours += 12;
+  if (period.toUpperCase() === "AM" && hours === 12) hours = 0;
 
   const date = new Date();
   date.setHours(hours, rawM, 0, 0);
@@ -54,44 +64,30 @@ async function schedulePrayerReminders(prayers, reminderMinutes) {
 }
 
 /**
- * Schedule a daily dua reminder at 9:00 AM if not already past.
+ * Schedule a repeating daily dua reminder at 9:00 AM.
  */
 async function scheduleDuaReminder() {
-  const now = new Date();
-  const duaTime = new Date();
-  duaTime.setHours(9, 0, 0, 0);
-
-  const seconds = Math.floor((duaTime - now) / 1000);
-  if (seconds <= 0) return;
-
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "Daily Dua Reminder",
       body: "Take a moment to make dua today",
       sound: true,
     },
-    trigger: { seconds },
+    trigger: { type: "daily", hour: 9, minute: 0, repeats: true },
   });
 }
 
 /**
- * Schedule an evening streak reminder at 9:00 PM if not already past.
+ * Schedule a repeating daily streak reminder at 9:00 PM.
  */
 async function scheduleStreakReminder() {
-  const now = new Date();
-  const streakTime = new Date();
-  streakTime.setHours(21, 0, 0, 0);
-
-  const seconds = Math.floor((streakTime - now) / 1000);
-  if (seconds <= 0) return;
-
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "Don't break your streak!",
       body: "Mark your prayers before the day ends",
       sound: true,
     },
-    trigger: { seconds },
+    trigger: { type: "daily", hour: 21, minute: 0, repeats: true },
   });
 }
 
@@ -128,7 +124,6 @@ export function useNotificationScheduler(prayerData, settings) {
   // One-time setup: permissions + channel
   useEffect(() => {
     if (hasSetup.current) return;
-    hasSetup.current = true;
 
     (async () => {
       const granted = await requestPermissions();
@@ -137,30 +132,37 @@ export function useNotificationScheduler(prayerData, settings) {
         return;
       }
       await setupChannel();
+      hasSetup.current = true;
       console.log("Notifications setup complete");
     })();
   }, []);
 
+  // Stable serialisation of prayer times so the effect only re-runs
+  // when the actual times change, not when the prayerData object reference changes.
+  const prayerTimesKey = prayerData?.prayers
+    ?.map((p) => `${p.name}:${p.time}`)
+    .join("|") ?? "";
+
   // Schedule/re-schedule whenever prayer data or settings change
   useEffect(() => {
-    if (!prayerData?.prayers?.length) return;
-
-    const prayers = prayerData.prayers;
+    const prayers = prayerData?.prayers;
     const { reminderMinutes, duaNotification, streakReminders } = settings;
 
     (async () => {
       // Cancel all existing scheduled notifications and re-schedule fresh
       await Notifications.cancelAllScheduledNotificationsAsync();
 
-      // Prayer reminders
-      await schedulePrayerReminders(prayers, reminderMinutes);
+      // Prayer reminders (only if prayer data is available)
+      if (prayers?.length) {
+        await schedulePrayerReminders(prayers, reminderMinutes);
+      }
 
-      // Dua notification
+      // Dua notification (independent of prayer data)
       if (duaNotification) {
         await scheduleDuaReminder();
       }
 
-      // Streak reminder
+      // Streak reminder (independent of prayer data)
       if (streakReminders) {
         await scheduleStreakReminder();
       }
@@ -169,7 +171,7 @@ export function useNotificationScheduler(prayerData, settings) {
       console.log(`Scheduled ${scheduled.length} notifications`);
     })();
   }, [
-    prayerData,
+    prayerTimesKey,
     settings.reminderMinutes,
     settings.duaNotification,
     settings.streakReminders,

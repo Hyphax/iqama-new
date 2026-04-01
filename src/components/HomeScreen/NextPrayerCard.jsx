@@ -19,7 +19,6 @@ import Animated, {
   withDelay,
   withSpring,
   Easing,
-  interpolateColor,
   interpolate,
 } from "react-native-reanimated";
 import { PRAYER_AURA, SHADOWS } from "@/utils/iqamaTheme";
@@ -136,6 +135,7 @@ export const NextPrayerCard = memo(function NextPrayerCard({
   prayerName,
   prayerTime,
   nextPrayerObj,
+  totalInterval,
   rakats,
   isWhite,
   animateOnMount = true,
@@ -169,7 +169,7 @@ export const NextPrayerCard = memo(function NextPrayerCard({
       target.setHours(hrs, tm, 0, 0);
       if (target < now) target.setDate(target.getDate() + 1);
       const diff = target - now;
-      const totalMs = 6 * 60 * 60 * 1000; // assume ~6hr between prayers
+      const totalMs = totalInterval || 6 * 60 * 60 * 1000;
       const pct = Math.max(0, Math.min(1, 1 - diff / totalMs));
       const offset = CIRCUMFERENCE * (1 - pct);
       progressAnim.value = withTiming(offset, {
@@ -195,7 +195,7 @@ export const NextPrayerCard = memo(function NextPrayerCard({
     updateProgress();
     const i = setInterval(updateProgress, 30000);
     return () => clearInterval(i);
-  }, [nextPrayerObj]);
+  }, [nextPrayerObj, totalInterval]);
 
   useEffect(() => {
     if (animateOnMount) {

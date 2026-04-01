@@ -5,7 +5,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { WHITE_THEME } from "@/utils/iqamaTheme";
 import Animated, {
-  FadeInDown,
   FadeIn,
   useSharedValue,
   useAnimatedStyle,

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Check, Trophy, Lock, Clock, X as XIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -682,9 +682,15 @@ export const PrayersList = memo(function PrayersList({
   isWhite,
   animateOnMount = true,
 }) {
+  const [minuteTick, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setMinuteTick((t) => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const done = prayers.filter((p) => p.completed).length;
   const allDone = done === prayers.length && prayers.length > 0;
-  const prayerStates = useMemo(() => getPrayerStates(prayers), [prayers]);
+  const prayerStates = useMemo(() => getPrayerStates(prayers), [prayers, minuteTick]);
   const labelC = isWhite ? WHITE_THEME.textSub : "rgba(212,175,55,0.5)";
   const lineC = isWhite ? WHITE_THEME.gold : "rgba(212,175,55,0.5)";
   const countC = isWhite ? WHITE_THEME.textMuted : "rgba(255,255,255,0.2)";

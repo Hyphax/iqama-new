@@ -57,7 +57,7 @@ function LaunchOverlay({ isWhite, opacity }) {
 
   return (
     <RNAnimated.View
-      pointerEvents="none"
+      pointerEvents="auto"
       style={[
         StyleSheet.absoluteFillObject,
         styles.launchOverlay,

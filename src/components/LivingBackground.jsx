@@ -327,7 +327,7 @@ function CrescentMoon({ isWhite }) {
 
   useEffect(() => {
     glow.value = withTiming(isWhite ? 0.55 : 0.4, { duration: 2500, easing: SIN });
-  }, []);
+  }, [isWhite]);
 
   const style = useAnimatedStyle(() => ({
     opacity: glow.value,
@@ -556,7 +556,7 @@ function OrnateCorner({ isWhite }) {
   const opac = useSharedValue(0);
   useEffect(() => {
     opac.value = withTiming(isWhite ? 0.18 : 0.06, { duration: 3000 });
-  }, []);
+  }, [isWhite]);
   const style = useAnimatedStyle(() => ({ opacity: opac.value }));
   const c = isWhite ? GOLD.rich : CYAN.solid;
   const c2 = isWhite ? GOLD.muted : `${CYAN.main}0.3)`;
@@ -597,7 +597,7 @@ function FlyingBird({ startX, y, delay = 0, isWhite, size = 1 }) {
 
   useEffect(() => {
     opac.value = withDelay(delay, withTiming(isWhite ? 0.18 : 0.12, { duration: 2000 }));
-  }, []);
+  }, [isWhite]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opac.value,
@@ -657,7 +657,7 @@ function IslamicPattern({ isWhite }) {
   const opac = useSharedValue(0);
   useEffect(() => {
     opac.value = withTiming(isWhite ? 0.06 : 0.02, { duration: 3000, easing: SIN });
-  }, []);
+  }, [isWhite]);
   const style = useAnimatedStyle(() => ({ opacity: opac.value }));
   const c = isWhite ? GOLD.rich : CYAN.solid;
 
@@ -697,7 +697,7 @@ function DustParticle({ top, left, size, delay, isWhite }) {
 
   useEffect(() => {
     opacity.value = withDelay(delay, withTiming(isWhite ? 0.4 : 0.45, { duration: 2500, easing: SIN }));
-  }, []);
+  }, [isWhite]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -728,7 +728,7 @@ function LightBeam({ top, left, angle, w, h, delay, isWhite }) {
 
   useEffect(() => {
     opacity.value = withDelay(delay, withTiming(isWhite ? 0.12 : 0.04, { duration: 3000, easing: SIN }));
-  }, []);
+  }, [isWhite]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,

@@ -19,6 +19,7 @@ export const ShimmerSweep = memo(function ShimmerSweep({
   interval = 4000,
   width = 70,
   opacity = 0.07,
+  repeatCount = -1,
 }) {
   const translateX = useSharedValue(-SW);
 
@@ -30,11 +31,11 @@ export const ShimmerSweep = memo(function ShimmerSweep({
           withTiming(SW, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
           withDelay(interval, withTiming(-SW, { duration: 0 })),
         ),
-        5,
+        repeatCount,
         false,
       ),
     );
-  }, []);
+  }, [delay, interval, repeatCount]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],

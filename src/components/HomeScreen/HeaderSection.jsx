@@ -1,6 +1,6 @@
-import { useEffect, memo } from "react";
+import { useEffect, useState, memo } from "react";
 import { View, Text, Pressable } from "react-native";
-import { MapPin, Moon, Sun, Sparkles, Star } from "lucide-react-native";
+import { MapPin, Moon, Sun, Sparkles } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeInDown,
@@ -77,7 +77,14 @@ export const HeaderSection = memo(function HeaderSection({
   onToggleTheme,
   animateOnMount = true,
 }) {
-  const greeting = getGreeting();
+  const [greeting, setGreeting] = useState(getGreeting);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Dark theme colors ──────────────────────────────────────────────────────
   const tc = isWhite ? WHITE_THEME.text : "#FAFAFA";

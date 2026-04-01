@@ -36,7 +36,7 @@ function TwinkleStar({ top, left, delay, size = 2 }) {
       withTiming(0.6, { duration: 1500 + Math.random() * 1000, easing: Easing.inOut(Easing.sin) }),
       withTiming(0, { duration: 1500 + Math.random() * 1000, easing: Easing.inOut(Easing.sin) }),
     ), -1, true));
-  }, []);
+  }, [delay]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Animated.View style={[{
@@ -156,7 +156,7 @@ export const BackgroundAura = memo(function BackgroundAura({ aura }) {
       withTiming(0.16, { duration: 10000, easing: Easing.inOut(Easing.sin) }),
       withTiming(0.03, { duration: 10000, easing: Easing.inOut(Easing.sin) }),
     ), -1, true));
-  }, []);
+  }, [aura]);
 
   const s1 = useAnimatedStyle(() => ({
     opacity: o1.value,

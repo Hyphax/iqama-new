@@ -73,13 +73,15 @@ function generateCode() {
 export async function getMySquadCode() {
   try {
     const stored = await AsyncStorage.getItem(MY_CODE_KEY);
-    if (stored) return stored;
+    if (stored) return { code: stored, fromStorage: true };
     const fresh = generateCode();
     await AsyncStorage.setItem(MY_CODE_KEY, fresh);
-    return fresh;
+    return { code: fresh, fromStorage: true };
   } catch {
-    // Fallback: just return a code (won't persist on error, but won't crash)
-    return generateCode();
+    // Fallback: just return a code (won't persist on error, but won't crash).
+    // fromStorage=false signals callers that this code is ephemeral and must
+    // NOT be used to create a new cloud user row (it would be a duplicate).
+    return { code: generateCode(), fromStorage: false };
   }
 }
 
@@ -201,7 +203,7 @@ export function useSquad({ displayName, myPrayers, myStreak }) {
   useEffect(() => {
     isMounted.current = true;
     (async () => {
-      const code  = await getMySquadCode();
+      const { code }  = await getMySquadCode();
       const raw   = await AsyncStorage.getItem(FRIEND_CODES_KEY);
       const codes = raw ? JSON.parse(raw) : [];
       if (isMounted.current) {

@@ -549,7 +549,7 @@ export default function QiblaScreen() {
         if (now - lastTextUpdateRef.current > 100) {
           lastTextUpdateRef.current = now;
           setDisplayHeading(Math.round(trueHeading));
-          if (accuracy !== undefined) setHeadingAccuracy(accuracy);
+          if (accuracy >= 0) setHeadingAccuracy(accuracy);
         }
 
         let diff = Math.abs(bearingVal - trueHeading);

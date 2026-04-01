@@ -96,28 +96,42 @@ export function SettingsProvider({ children, initialSettings, initialWhiteTheme 
     }, 2000);
   }, []);
 
-  const updateSetting = useCallback(async (key, value) => {
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, []);
+
+  // Ref to capture the result of functional setState for side effects
+  const pendingSettingsRef = useRef(null);
+
+  const updateSetting = useCallback((key, value) => {
     setSettingsState((prev) => {
       const updated = { ...prev, [key]: value };
-      AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated)).catch((e) =>
-        console.error("Failed to save setting:", e)
-      );
-      // Sync to Supabase
-      syncToSupabase(updated);
+      pendingSettingsRef.current = updated;
       return updated;
     });
+    // Side effects outside the updater, using the ref to get the computed value
+    const updated = pendingSettingsRef.current;
+    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated)).catch((e) =>
+      console.error("Failed to save setting:", e)
+    );
+    syncToSupabase(updated);
   }, [syncToSupabase]);
 
-  const updateSettings = useCallback(async (updates) => {
+  const updateSettings = useCallback((updates) => {
     setSettingsState((prev) => {
       const updated = { ...prev, ...updates };
-      AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated)).catch((e) =>
-        console.error("Failed to save settings:", e)
-      );
-      // Sync to Supabase
-      syncToSupabase(updated);
+      pendingSettingsRef.current = updated;
       return updated;
     });
+    // Side effects outside the updater, using the ref to get the computed value
+    const updated = pendingSettingsRef.current;
+    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated)).catch((e) =>
+      console.error("Failed to save settings:", e)
+    );
+    syncToSupabase(updated);
   }, [syncToSupabase]);
 
   const contextValue = useMemo(
@@ -156,25 +170,29 @@ export function useSettings() {
     load();
   }, []);
 
-  const updateSetting = useCallback(async (key, value) => {
-    try {
-      const updated = { ...settings, [key]: value };
-      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
-      setSettingsState(updated);
-    } catch (e) {
-      console.error("Failed to save setting:", e);
-    }
-  }, [settings]);
+  const pendingRef = useRef(null);
 
-  const updateSettings = useCallback(async (updates) => {
-    try {
-      const updated = { ...settings, ...updates };
-      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
-      setSettingsState(updated);
-    } catch (e) {
-      console.error("Failed to save settings:", e);
-    }
-  }, [settings]);
+  const updateSetting = useCallback((key, value) => {
+    setSettingsState((prev) => {
+      const updated = { ...prev, [key]: value };
+      pendingRef.current = updated;
+      return updated;
+    });
+    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(pendingRef.current)).catch((e) =>
+      console.error("Failed to save setting:", e)
+    );
+  }, []);
+
+  const updateSettings = useCallback((updates) => {
+    setSettingsState((prev) => {
+      const updated = { ...prev, ...updates };
+      pendingRef.current = updated;
+      return updated;
+    });
+    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(pendingRef.current)).catch((e) =>
+      console.error("Failed to save settings:", e)
+    );
+  }, []);
 
   return { settings, updateSetting, updateSettings, isLoaded };
 }

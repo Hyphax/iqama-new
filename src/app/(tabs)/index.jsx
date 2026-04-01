@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { PRAYER_AURA } from "@/utils/iqamaTheme";
 import { HeaderSection } from "@/components/HomeScreen/HeaderSection";
 import { NextPrayerCard } from "@/components/HomeScreen/NextPrayerCard";
 import { FocusButton } from "@/components/HomeScreen/FocusButton";
@@ -22,7 +21,7 @@ import { useNotificationScheduler } from "@/utils/useNotificationScheduler";
 import { useUser } from "@/utils/auth/useUser";
 import { useQuery } from "@tanstack/react-query";
 import * as Location from "expo-location";
-import Animated, { FadeInDown, LayoutAnimationConfig } from "react-native-reanimated";
+import { LayoutAnimationConfig } from "react-native-reanimated";
 import { useSkipInitialEntering } from "@/utils/useSkipInitialEntering";
 import { useLaunchOverlay } from "@/utils/useLaunchOverlay";
 
@@ -30,7 +29,12 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const skipInitialEntering = useSkipInitialEntering();
   const hideLaunchOverlay = useLaunchOverlay();
-  const animateHomeIntro = false;
+  const [minuteTick, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setMinuteTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const [location, setLocation] = useState(null);
   const [cityName, setCityName] = useState("Loading...");
   const [country, setCountry] = useState(null);
@@ -39,7 +43,6 @@ export default function HomeScreen() {
     completedPrayers,
     streakData,
     togglePrayerComplete,
-    markPrayerComplete,
   } = usePrayerStorage();
   const { settings, updateSetting } = useSettings();
   const { user } = useUser();
@@ -232,7 +235,7 @@ export default function HomeScreen() {
 
   const currentPrayerName = useMemo(
     () => getCurrentPrayer(prayerData?.prayers || []),
-    [prayerData?.prayers],
+    [prayerData?.prayers, minuteTick],
   );
 
   const nextPrayerObj = useMemo(
@@ -318,12 +321,11 @@ export default function HomeScreen() {
             onToggleTheme={handleToggleTheme}
             date={dateString}
             insets={insets}
-            animateOnMount={animateHomeIntro}
+            animateOnMount={false}
           />
 
           {prayerLoading ? (
-            <Animated.View
-              entering={animateHomeIntro ? FadeInDown.delay(300).duration(500) : undefined}
+            <View
               style={{
                 paddingHorizontal: 20,
                 marginBottom: 24,
@@ -345,10 +347,9 @@ export default function HomeScreen() {
               >
                 Loading prayer times...
               </Text>
-            </Animated.View>
+            </View>
           ) : prayerError ? (
-            <Animated.View
-              entering={animateHomeIntro ? FadeInDown.delay(300).duration(500) : undefined}
+            <View
               style={{
                 paddingHorizontal: 20,
                 marginBottom: 24,
@@ -366,7 +367,7 @@ export default function HomeScreen() {
               >
                 Could not load prayer times.{"\n"}Pull down to retry.
               </Text>
-            </Animated.View>
+            </View>
           ) : (
             <>
               <NextPrayerCard
@@ -375,7 +376,7 @@ export default function HomeScreen() {
                 nextPrayerObj={nextPrayerObj}
                 rakats={nextPrayerObj?.rakats}
                 isWhite={isWhite}
-                animateOnMount={animateHomeIntro}
+                animateOnMount={false}
               />
               {settings.focusModeEnabled && (
                 <FocusButton prayerName={currentPrayer} isWhite={isWhite} />
@@ -384,12 +385,12 @@ export default function HomeScreen() {
                 prayers={enrichedPrayers}
                 onToggleComplete={togglePrayerComplete}
                 isWhite={isWhite}
-                animateOnMount={animateHomeIntro}
+                animateOnMount={false}
               />
               <AfterPrayerDuaCard
                 currentPrayerName={currentPrayer}
                 isWhite={isWhite}
-                animateOnMount={animateHomeIntro}
+                animateOnMount={false}
               />
             </>
           )}
@@ -398,7 +399,7 @@ export default function HomeScreen() {
             currentStreak={streakData.currentStreak}
             streakDays={streakData.streakDays}
             isWhite={isWhite}
-            animateOnMount={animateHomeIntro}
+            animateOnMount={false}
           />
         </ScrollView>
       </View>

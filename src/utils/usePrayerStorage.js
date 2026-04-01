@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { dbInsert, IS_SUPABASE_READY } from "./supabaseClient";
+import { dbInsert, dbUpdate, IS_SUPABASE_READY } from "./supabaseClient";
 
 const STORAGE_KEYS = {
   COMPLETED_PREFIX: "iqama_completed_",
   STREAK: "iqama_streak_data",
   SETTINGS: "iqama_settings",
+};
+
+// ─── Mutex to serialize read-modify-write operations ────────────────────────
+let storageLock = Promise.resolve();
+const withLock = (fn) => {
+  storageLock = storageLock.then(fn, fn);
+  return storageLock;
 };
 
 // ─── Supabase prayer sync helper ─────────────────────────────────────────────
@@ -35,7 +42,6 @@ async function syncStreakToSupabase(currentStreak, bestStreak) {
     const userId = await AsyncStorage.getItem("iqama_supabase_user_id");
     if (!userId) return;
 
-    const { dbUpdate } = require("./supabaseClient");
     await dbUpdate("users", `id=eq.${userId}`, {
       current_streak: currentStreak,
       best_streak: bestStreak,
@@ -46,11 +52,18 @@ async function syncStreakToSupabase(currentStreak, bestStreak) {
 }
 
 function getTodayKey() {
-  return new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function getDateKey(date) {
-  return date.toISOString().split("T")[0];
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 // Calculate streak from stored data
@@ -228,49 +241,53 @@ export function usePrayerStorage() {
     load();
   }, []);
 
-  const togglePrayerComplete = useCallback(async (prayerName) => {
-    try {
-      const todayKey = getTodayKey();
-      const key = `${STORAGE_KEYS.COMPLETED_PREFIX}${todayKey}`;
-      const stored = await AsyncStorage.getItem(key);
-      const current = stored ? JSON.parse(stored) : {};
-      const updated = { ...current, [prayerName]: !current[prayerName] };
+  const togglePrayerComplete = useCallback((prayerName) => {
+    return withLock(async () => {
+      try {
+        const todayKey = getTodayKey();
+        const key = `${STORAGE_KEYS.COMPLETED_PREFIX}${todayKey}`;
+        const stored = await AsyncStorage.getItem(key);
+        const current = stored ? JSON.parse(stored) : {};
+        const updated = { ...current, [prayerName]: !current[prayerName] };
 
-      await AsyncStorage.setItem(key, JSON.stringify(updated));
-      setCompletedPrayers(updated);
+        await AsyncStorage.setItem(key, JSON.stringify(updated));
+        setCompletedPrayers(updated);
 
-      // Recalculate streak
-      const streak = await calculateStreak();
-      setStreakData(streak);
+        // Recalculate streak
+        const streak = await calculateStreak();
+        setStreakData(streak);
 
-      // Sync to Supabase (fire & forget)
-      syncPrayerToSupabase(todayKey, updated);
-      syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
-    } catch (e) {
-      console.error("Failed to toggle prayer:", e);
-    }
+        // Sync to Supabase (awaited inside lock to preserve order)
+        await syncPrayerToSupabase(todayKey, updated);
+        await syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
+      } catch (e) {
+        console.error("Failed to toggle prayer:", e);
+      }
+    });
   }, []);
 
-  const markPrayerComplete = useCallback(async (prayerName) => {
-    try {
-      const todayKey = getTodayKey();
-      const key = `${STORAGE_KEYS.COMPLETED_PREFIX}${todayKey}`;
-      const stored = await AsyncStorage.getItem(key);
-      const current = stored ? JSON.parse(stored) : {};
-      const updated = { ...current, [prayerName]: true };
+  const markPrayerComplete = useCallback((prayerName) => {
+    return withLock(async () => {
+      try {
+        const todayKey = getTodayKey();
+        const key = `${STORAGE_KEYS.COMPLETED_PREFIX}${todayKey}`;
+        const stored = await AsyncStorage.getItem(key);
+        const current = stored ? JSON.parse(stored) : {};
+        const updated = { ...current, [prayerName]: true };
 
-      await AsyncStorage.setItem(key, JSON.stringify(updated));
-      setCompletedPrayers(updated);
+        await AsyncStorage.setItem(key, JSON.stringify(updated));
+        setCompletedPrayers(updated);
 
-      const streak = await calculateStreak();
-      setStreakData(streak);
+        const streak = await calculateStreak();
+        setStreakData(streak);
 
-      // Sync to Supabase (fire & forget)
-      syncPrayerToSupabase(todayKey, updated);
-      syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
-    } catch (e) {
-      console.error("Failed to mark prayer:", e);
-    }
+        // Sync to Supabase (awaited inside lock to preserve order)
+        await syncPrayerToSupabase(todayKey, updated);
+        await syncStreakToSupabase(streak.currentStreak, streak.bestStreak);
+      } catch (e) {
+        console.error("Failed to mark prayer:", e);
+      }
+    });
   }, []);
 
   return {
